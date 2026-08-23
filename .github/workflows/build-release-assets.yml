@@ -23,12 +23,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh issue comment 1 --body "### Automated release-asset build started\n\nGitHub Actions is compiling the manuscript and supplement and will upload four generated assets to the private draft release v1.0.0."
 
-      - name: Install TeX and archive tools
+      - name: Install TeX and PDF tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y latexmk texlive-latex-extra texlive-fonts-recommended zip poppler-utils
+          sudo apt-get install -y latexmk texlive-latex-extra texlive-fonts-recommended poppler-utils
 
-      - name: Build manuscript and supplement
+      - name: Build manuscript, supplement and deterministic source archives
         env:
           SOURCE_DATE_EPOCH: 1787260800
         run: |
@@ -40,8 +40,27 @@ jobs:
           cp main.pdf ../dist/erdos506_preprint.pdf
           cp supplement.pdf ../dist/erdos506_computational_supplement.pdf
           cd ..
-          (cd paper && zip -q -r ../dist/arxiv-source.zip main.tex references.bib main-sections)
-          (cd paper && zip -q -r ../dist/supplement-source.zip supplement.tex supplement-sections)
+
+          python3 tools/make_deterministic_zip.py \
+            --base paper \
+            --output dist/arxiv-source.zip \
+            paper/main.tex paper/references.bib paper/main-sections
+          python3 tools/make_deterministic_zip.py \
+            --base paper \
+            --output dist/arxiv-source.check.zip \
+            paper/main.tex paper/references.bib paper/main-sections
+          cmp dist/arxiv-source.zip dist/arxiv-source.check.zip
+
+          python3 tools/make_deterministic_zip.py \
+            --base paper \
+            --output dist/supplement-source.zip \
+            paper/supplement.tex paper/supplement-sections
+          python3 tools/make_deterministic_zip.py \
+            --base paper \
+            --output dist/supplement-source.check.zip \
+            paper/supplement.tex paper/supplement-sections
+          cmp dist/supplement-source.zip dist/supplement-source.check.zip
+
           sha256sum dist/arxiv-source.zip \
                     dist/erdos506_computational_supplement.pdf \
                     dist/erdos506_preprint.pdf \
@@ -71,7 +90,7 @@ jobs:
           set -euo pipefail
           if [ "$JOB_STATUS" = "success" ]; then
             hashes="$(sed 's#  dist/#  #' dist/GENERATED_ASSET_SHA256SUMS.txt)"
-            gh issue comment 1 --body "### Automated release-asset build completed\n\nThe four source-derived assets were compiled and uploaded to the private draft release v1.0.0.\n\n\`\`\`text\n${hashes}\n\`\`\`\n\nThe only remaining binary to attach is \`Erdos506.zip\`, expected SHA-256 \`528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3\`."
+            gh issue comment 1 --body "### Deterministic release-asset build completed\n\nThe four source-derived assets were compiled, deterministic source ZIPs were checked byte-for-byte, and all four assets were uploaded to the private draft release v1.0.0.\n\n\`\`\`text\n${hashes}\n\`\`\`\n\nThe only remaining binary to attach is \`Erdos506.zip\`, expected SHA-256 \`528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3\`."
             echo "GENERATED_RELEASE_ASSETS_V1=PASSED"
           else
             gh issue comment 1 --body "### Automated release-asset build failed\n\nThe GitHub Actions run did not complete successfully. Open the latest \`build-and-upload-release-assets-v1\` workflow run and inspect its failed step. No draft release assets should be treated as final until the workflow reports success."
