@@ -1,0 +1,51 @@
+\section{The case $n=12$}
+
+Assume for contradiction that $q\le50$.  The inherited structural reduction gives
+\[
+ 67\le B\le69,
+\]
+and leaves twenty-five generalized-circle profiles.  A complete local generalized-allowable-sequence classification contains 118 relevant local types: 96 have explicit witnesses and 22 are exhaustively impossible.  No timeout is interpreted as impossibility.  The classification reduces the frontier to the thirteen profiles in \cref{tab:n12profiles}; the profile coordinates are $(b_3,b_4,b_5,b_6)$.
+
+\begin{table}[ht]
+\centering
+\caption{The thirteen locally allowable $n=12$ profiles.  The last column gives the number of exact degree branches.}
+\label{tab:n12profiles}
+\begin{tabular}{ccl r}
+\toprule
+$B$ & type & profile & branches \\
+\midrule
+67 & special & $(40,15,12,0)$ & 1 \\
+68 & special & $(28,38,0,2)$ & 3 intersection types \\
+68 & general & $(30,35,1,2)$ & 16 \\
+68 & general & $(32,32,2,2)$ & 405 \\
+68 & general & $(34,29,3,2)$ & 848 \\
+68 & general & $(36,26,4,2)$ & 420 \\
+68 & general & $(38,23,5,2)$ & 63 \\
+69 & general & $(32,32,4,1)$ & 10 \\
+69 & general & $(34,29,5,1)$ & 316 \\
+69 & general & $(36,26,6,1)$ & 942 \\
+69 & general & $(38,23,7,1)$ & 977 \\
+69 & general & $(40,20,8,1)$ & 437 \\
+69 & general & $(42,17,9,1)$ & 45 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The eleven general profiles comprise exactly 4479 exact degree branches.  For each branch, the verifier constructs all compatible high blocks, enforces pair intersections and local types, and searches for the required rich-line subfamily.  Every branch is terminal.
+
+It remains to explain the two special profiles.
+
+\subsection{The $B=67$ terminal}
+The profile $(40,15,12,0)$ has the unique local degree vector $d_5=(5,\ldots,5)$.  Fixing a pair of 5-blocks leaves three canonical intersection sizes $r=0,1,2$.  The three complete searches visit respectively 26,734,131; 96,566,209; and 219,998,191 five-block nodes, and no compatible 4-block/line skeleton survives.
+
+\subsection{The $B=68$ terminal}
+The profile $(28,38,0,2)$ contains two 6-blocks.  There are three intersection types.
+
+If they are disjoint, every relevant 4-block has type $2+2$ with respect to the two carriers.  Radical-axis compatibility decomposes the possibilities into 178 exact component cases, all impossible.  If the two carriers meet in one point, local degree maxima force at least six 4-blocks through the common point, but such blocks form a matching of size at most five.  If they meet in two points, the outside points would each support sixteen 4-blocks; all 50,400 rooted-star possibilities fail the labelled allowable-sequence test.
+
+Thus $B=67,68,69$ are impossible under $q\le50$.  Therefore $q\ge51$, while \cref{eq:construction} gives $q\le51$.
+
+\begin{theorem}\label{thm:n12}
+$f(12)=51$.
+\end{theorem}
+
