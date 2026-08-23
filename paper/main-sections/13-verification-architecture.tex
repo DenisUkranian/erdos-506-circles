@@ -1,0 +1,24 @@
+\section{Verification architecture}
+
+The canonical release is a compact nested archive rather than a dependency on an online service.  Its outer command is
+\begin{verbatim}
+python3 verify.py          # quick integrity and retained-certificate audit
+python3 verify.py --full   # compile and replay all proof packages
+\end{verbatim}
+The verification layers are:
+\begin{enumerate}
+\item SHA-256 of the canonical archive;
+\item outer and nested ZIP integrity;
+\item package-local SHA-256 manifests;
+\item exact retained-certificate audits;
+\item recompilation and full finite regeneration where supported;
+\item theorem-value consistency checks.
+\end{enumerate}
+The full clean replay terminates with
+\begin{verbatim}
+ERDOS506_FULL_REPLAY=PASSED
+\end{verbatim}
+and requires only Python 3.10 or newer, GNU C++20, Bash, \texttt{sha256sum}, and standard ZIP tools.  No network access is used.  Timeouts, crashes, missing files and missing terminal markers are fail-closed and never interpreted as impossibility.
+
+The canonical release deliberately omits superseded working packages in which timeouts or incomplete case matrices had once been misclassified.  This audit history is important: a computer-assisted proof is only as strong as its completeness accounting and its treatment of failed computation.
+
