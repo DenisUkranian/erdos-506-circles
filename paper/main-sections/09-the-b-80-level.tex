@@ -1,0 +1,23 @@
+\section{The $B=80$ level}
+
+The profile identity \cref{eq:triplepartition} and exact local restrictions leave fourteen profiles.  They split into five terminal mechanisms:
+\begin{enumerate}
+\item four rows with $b_6=2$ and $b_5=13,14,15,16$ are eliminated by exact rational Farkas certificates followed by complete residual search;
+\item $(46,20,12,2)$ is eliminated by an exact Cuntz local-type terminal;
+\item the three rows with $b_6=5$ are impossible by the convexity estimate below;
+\item the $b_6=2$ rows $b_5=6,10,11$ have no locally allowable degree system;
+\item the remaining rows $b_5=7,8,9$ reduce to 695 exact degree branches, all terminal.
+\end{enumerate}
+
+For the elementary $b_6=5$ obstruction, let $d_p$ count the number of five selected 6-blocks through point $p$.  Pairwise block intersections give
+\[
+ \sum_p\binom{d_p}{2}\le 2\binom52=20.
+\]
+But $\sum_p d_p=30$, and convexity on thirteen integer degrees minimizes the left side at $3^4 2^9$, giving
+\[
+ 4\binom32+9\binom22=21,
+\]
+a contradiction.
+
+The 695 fresh residual branches visit 5,829,152,493 five-block search nodes and have no survivor.  Hence $B=80$ is impossible.
+
