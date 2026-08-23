@@ -1,0 +1,34 @@
+name: audit-draft-release-assets
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/audit-release-trigger.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download current draft release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/release-assets
+          gh release download v1.0.0 --dir /tmp/release-assets
+          find /tmp/release-assets -maxdepth 1 -type f -printf '%f\n' | sort
+          (cd /tmp/release-assets && sha256sum * | sort) > /tmp/release-assets.sha256
+      - name: Report current release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          hashes="$(cat /tmp/release-assets.sha256)"
+          gh issue comment 1 --body "### Current draft release asset audit\n\nThe following files are currently attached to draft release v1.0.0:\n\n\`\`\`text\n${hashes}\n\`\`\`"
+          echo "DRAFT_RELEASE_ASSET_AUDIT=PASSED"
