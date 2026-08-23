@@ -1,0 +1,33 @@
+name: create-draft-release-v1
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/release-trigger-v1.txt
+
+permissions:
+  contents: write
+
+jobs:
+  create-draft-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create draft release v1.0.0
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view v1.0.0 >/dev/null 2>&1; then
+            echo "Release v1.0.0 already exists; leaving it unchanged."
+          else
+            gh release create v1.0.0 \
+              --draft \
+              --target main \
+              --title "Erdős Problem 506 — proof and verification archive v1.0.0" \
+              --notes-file RELEASE_NOTES.md
+            echo "DRAFT_RELEASE_V1_CREATED=PASSED"
+          fi
