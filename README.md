@@ -16,21 +16,28 @@ In particular, `f(12) = 51` and `f(13) = 61`.
 
 ## Paper
 
-- [Preprint PDF](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/erdos506_preprint.pdf)
-- [Computational supplement PDF](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/erdos506_computational_supplement.pdf)
-- [Complete LaTeX manuscript](paper/main.tex)
-- [Complete LaTeX supplement](paper/supplement.tex)
-- [arXiv source archive](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/arxiv-source.zip)
+The following files will be attached to GitHub Release `v1.0.0`:
+
+- `erdos506_preprint.pdf`;
+- `erdos506_computational_supplement.pdf`;
+- `arxiv-source.zip`;
+- `supplement-source.zip`.
+
+The complete editable sources are already committed:
+
+- [LaTeX manuscript](paper/main.tex);
+- [computational supplement](paper/supplement.tex);
+- [bibliography metadata](paper/references.bib).
 
 ## Verification
 
-The canonical proof object is `Erdos506.zip`, expected SHA-256:
+The canonical proof object is the Release asset `Erdos506.zip`, expected SHA-256:
 
 ```text
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-It will be attached to GitHub Release `v1.0.0`. After downloading it to `verification/Erdos506.zip`, run:
+After downloading it to `verification/Erdos506.zip`, run:
 
 ```bash
 bash verify_repository.sh
@@ -53,13 +60,12 @@ ERDOS506_QUICK_AUDIT=PASSED
 ERDOS506_FULL_REPLAY=PASSED
 ```
 
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full protocol.
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full protocol and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the one remaining release-upload step.
 
 ## Repository contents
 
 - `paper/` — complete manuscript and supplement sources;
-- branch `assets` — compiled PDFs and ready-to-upload source archives;
-- `verification/` — archive checksum, retained audit and instructions;
+- `verification/` — proof-bundle checksum, retained audit and instructions;
 - `CITATION.cff`, `codemeta.json`, `.zenodo.json` — archival metadata;
 - `AI_USAGE_DISCLOSURE.md` — disclosure and human-responsibility statement;
 - `LICENSE` — MIT license for software;
