@@ -1,0 +1,2 @@
+Create the private draft release v1.0.0 from RELEASE_NOTES.md.
+Triggered on 2026-08-24.
