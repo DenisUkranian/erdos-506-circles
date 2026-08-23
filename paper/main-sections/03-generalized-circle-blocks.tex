@@ -1,0 +1,26 @@
+\section{Generalized-circle blocks}
+
+\begin{definition}
+A \emph{generalized-circle block} of $S$ is a maximal subset of at least three selected points lying either on one line or on one proper circle.  Write
+\[
+ q=\#\{\text{proper-circle blocks}\},\qquad
+ L=\#\{\text{rich-line blocks}\},\qquad B=q+L,
+\]
+and let $b_s$ be the number of generalized-circle blocks of size $s$.
+\end{definition}
+
+The key bookkeeping fact is immediate but powerful.
+
+\begin{lemma}[Exact triple partition]\label{lem:triplepartition}
+Every three-element subset of $S$ belongs to exactly one maximal generalized-circle block.  Consequently
+\begin{equation}\label{eq:triplepartition}
+ \sum_{s\ge3}\binom{s}{3}b_s=\binom n3.
+\end{equation}
+\end{lemma}
+
+\begin{proof}
+Three noncollinear points determine a unique proper circle, whereas three collinear points determine a unique line.  Maximal extension is unique because two distinct lines share at most one point and two distinct proper circles share at most two points.
+\end{proof}
+
+Two further pair-budget observations recur throughout the finite arguments.  Distinct rich lines use disjoint unordered point pairs, and distinct generalized-circle blocks meet in at most two selected points.  These yield clique, degree and convexity obstructions after a block profile is fixed.
+
