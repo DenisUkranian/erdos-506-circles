@@ -1,2 +1,2 @@
 Build the manuscript and supplement assets and upload them to draft release v1.0.0.
-Retriggered on 2026-08-24 using the deterministic source archive builder.
+Retry on 2026-08-24 after the isolated deterministic ZIP diagnostic passed.
