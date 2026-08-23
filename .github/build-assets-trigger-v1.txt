@@ -1,2 +1,2 @@
 Build the manuscript and supplement assets and upload them to draft release v1.0.0.
-Triggered on 2026-08-24.
+Retriggered on 2026-08-24 with start/failure reporting and PDF page checks.
