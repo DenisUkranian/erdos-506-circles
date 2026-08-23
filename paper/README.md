@@ -1,17 +1,14 @@
 # Paper files
 
-The manuscript and computational supplement are distributed as GitHub Release assets in release `v1.0.0`:
+Complete LaTeX sources:
 
-- `erdos506_preprint.pdf`
-- `erdos506_computational_supplement.pdf`
+- `main.tex` with the manuscript sections in `main-sections/`;
+- `supplement.tex`, a complete monolithic computational supplement;
+- `references.bib`, machine-readable bibliography metadata.
 
-The complete LaTeX sources are committed here:
+Compiled PDFs and ready-to-upload source archives are stored on the `assets` branch:
 
-- `main.tex`
-- `supplement.tex`
-- `references.bib`
-
-Ready-to-upload source archives are distributed as release assets:
-
-- `arxiv-source.zip`
-- `supplement-source.zip`
+- `paper/erdos506_preprint.pdf`;
+- `paper/erdos506_computational_supplement.pdf`;
+- `paper/arxiv-source.zip`;
+- `paper/supplement-source.zip`.
