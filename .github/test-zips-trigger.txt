@@ -1,1 +1,1 @@
-Run the isolated deterministic source ZIP diagnostic on 2026-08-24.
+Run the isolated deterministic source ZIP diagnostic on 2026-08-24 and report the captured failure log.
