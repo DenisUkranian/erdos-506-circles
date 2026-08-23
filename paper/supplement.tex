@@ -11,18 +11,193 @@
 \author{Denis Paliy}
 \date{21 August 2026}
 \begin{document}
+\maketitle
 
-\input{supplement-sections/01-frontmatter.tex}
-\input{supplement-sections/02-canonical-release.tex}
-\input{supplement-sections/03-convention-and-theorem-boundary.tex}
-\input{supplement-sections/04-trust-and-failure-model.tex}
-\input{supplement-sections/05-outer-package-map.tex}
-\input{supplement-sections/06-reproduction-commands.tex}
-\input{supplement-sections/07-finite-ledger-for-n-12.tex}
-\input{supplement-sections/08-finite-ledger-for-n-13.tex}
-\input{supplement-sections/09-earlier-finite-packages-and-uniform-range.tex}
-\input{supplement-sections/10-recommended-independent-checks.tex}
-\input{supplement-sections/11-archival-and-citation-policy.tex}
-\input{supplement-sections/12-generative-ai-disclosure.tex}
+\begin{abstract}
+This supplement records the trusted computing base, finite completeness ledgers, package layout, exact search counts, failure policy and replay commands for the accompanying computer-assisted proof.  It is intended for referees and independent verifiers rather than as a substitute for the mathematical manuscript.
+\end{abstract}
+
+\section{Canonical release}
+
+The canonical verification object is \path{Erdos506.zip}, SHA-256
+\begin{verbatim}
+528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
+\end{verbatim}
+The cited proof object is identified by its filename and SHA-256.  The public repository is \url{https://github.com/DenisUkranian/erdos-506-circles}; a DOI will be added after archival deposit.  Substantive file changes must be released as a new archived version with a new checksum.
+
+\section{Convention and theorem boundary}
+
+The package concerns distinct planar points that are not all collinear and not all concyclic.  Only proper Euclidean circles containing at least three selected points are counted.  The literal Erd\H{o}s wording without a collinearity exclusion has the degenerate value zero.
+
+The canonical theorem verified by the package is
+\[
+ f(8)=17,
+ \qquad
+ f(n)=1+\binom{n-1}{2}-\left\lfloor\frac{n-1}{2}\right\rfloor
+ \quad(n\ge9).
+\]
+The two new finite terminals are $f(12)=51$ and $f(13)=61$.
+
+\section{Trust and failure model}
+
+The proof is not formalized in a proof assistant.  Its trusted base consists of:
+\begin{itemize}
+\item standard integer and rational arithmetic in Python and C++;
+\item the correctness of the mathematical reductions exposed in the manuscript and proof ledgers;
+\item the operating system, compiler and interpreter used for replay;
+\item the integrity of the released finite input tables and source code.
+\end{itemize}
+
+The release uses fail-closed semantics.  A timeout, process crash, missing file, malformed output, missing final marker or checksum mismatch is a verification failure, never a proof of impossibility.  Superseded working packages that violated this rule are not included in the canonical archive.
+
+\section{Outer package map}
+
+\begin{longtable}{p{0.30\linewidth}p{0.62\linewidth}}
+\toprule
+Path & Purpose \\
+\midrule
+\endhead
+\path{verify.py} & Outer integrity audit and dispatcher; \texttt{--full} recompiles and replays proof packages. \\
+\path{packages/base.zip} & Earlier values $n=8,9,10,11,14,15,16$ and the uniform theorem for $n\ge17$. \\
+\path{packages/n12.zip} & Complete $n=12$ local classification, degree regeneration and special terminals. \\
+\path{packages/n13/B80.zip} & Complete fourteen-profile $B=80$ terminal. \\
+\path{packages/n13/B81.zip} & Complete seven-profile $B=81$ terminal. \\
+\path{packages/n13/B82.zip} & Complete eleven-profile $B=82$ terminal. \\
+\path{packages/n13/B83.zip} & Line bound $L\le23$, mixed terminal, hypergraph classification and projective obstruction. \\
+\path{MANIFEST.sha256} & Outer file integrity. \\
+\path{PACKAGE_HASHES.sha256} & Integrity of all nested proof packages. \\
+\path{audits/} & Fresh retained output from final assembly and clean replay. \\
+\bottomrule
+\end{longtable}
+
+\section{Reproduction commands}
+
+\subsection{Quick audit}
+\begin{verbatim}
+unzip Erdos506.zip
+cd Erdos506
+python3 verify.py
+\end{verbatim}
+Expected final marker:
+\begin{verbatim}
+ERDOS506_QUICK_AUDIT=PASSED
+\end{verbatim}
+
+\subsection{Full replay}
+\begin{verbatim}
+python3 verify.py --full
+\end{verbatim}
+Expected final marker:
+\begin{verbatim}
+ERDOS506_FULL_REPLAY=PASSED
+\end{verbatim}
+Required tools are Python 3.10 or newer, GNU C++20, Bash, \texttt{sha256sum}, and ordinary ZIP utilities.  No network access and no proprietary optimizer are required.
+
+\section{Finite ledger for $n=12$}
+
+Under the contradiction hypothesis $q\le50$, inherited exact reductions leave $67\le B\le69$ and 25 profiles.  The local classification has 118 relevant types, partitioned exactly into 96 witnessed allowable types and 22 exhaustively impossible types.  This leaves thirteen profiles.
+
+Eleven profiles are handled by 4479 exact degree branches.  The branch distribution is:
+\begin{center}
+\begin{tabular}{c|rrrrrrrrrrr}
+profile index & 1&2&3&4&5&6&7&8&9&10&11\\
+\hline
+branches & 16&405&848&420&63&10&316&942&977&437&45
+\end{tabular}
+\end{center}
+The sum is 4479.  Each branch independently builds compatible 5-block and 4-block families and applies the line/allowable constraints.
+
+The exceptional $B=67$ profile $(40,15,12,0)$ has one local degree vector.  Fixing two 5-blocks gives three canonical intersection sizes.  Complete searches visit 26,734,131; 96,566,209; and 219,998,191 five-block nodes respectively, with no survivor.
+
+The exceptional $B=68$ profile $(28,38,0,2)$ has two 6-blocks:
+\begin{itemize}
+\item intersection zero: 178 radical-axis component cases, all terminal;
+\item intersection one: a matching bound contradicts the required six 4-blocks through the common point;
+\item intersection two: all 50,400 rooted-star systems fail the labelled allowable-sequence test.
+\end{itemize}
+The package checks profile coverage, degree-table regeneration, retained outputs and special-case completeness.
+
+\section{Finite ledger for $n=13$}
+
+Under $q\le60$, the inherited package gives $B\ge80$.  The $B=83$ package proves $L\le23$, hence $B\le83$.  The four levels are independently terminal.
+
+\subsection{$B=80$}
+
+Fourteen profiles are partitioned as follows:
+\begin{itemize}
+\item four inherited Farkas-plus-residual terminals ($b_5=13,14,15,16$, $b_6=2$);
+\item one exact Cuntz local terminal $(46,20,12,2)$;
+\item three $b_6=5$ rows excluded by the convexity contradiction $21>20$;
+\item three rows ($b_5=6,10,11$, $b_6=2$) with no local degree system;
+\item three rows ($b_5=7,8,9$, $b_6=2$) producing 695 exact branches.
+\end{itemize}
+The fresh residual search visits 5,829,152,493 five-block nodes and finds no survivor.  The audit verifies all 63 task shards, no timeout and full branch coverage.
+
+\subsection{$B=81$}
+
+The complete local table leaves $b_5=7,\ldots,13$.  The terminal counts are:
+\begin{center}
+\begin{tabular}{c r l}
+\toprule
+$b_5$ & 5-block systems & final obstruction \\
+\midrule
+7,8 & -- & negative pair-intersection slack \\
+9 & 384 & no complete 35-family of 4-blocks \\
+10 & 35,326 & no complete 32-family \\
+11 & 13,418 & no complete 29-family \\
+12 & 295 & no complete 26-family \\
+13 & 172 & all complete 23-families fail line-21 \\
+\bottomrule
+\end{tabular}
+\end{center}
+The aggregate package deliberately excludes an older incorrect $b_4$ target and checks only the corrected terminal.
+
+\subsection{$B=82$}
+
+There are eight pure profiles $b_6=0$, $b_5=10,\ldots,17$, and three mixed profiles $b_6=3$, $b_5=5,6,7$.
+
+The pure reduction has 419 canonical $D=(9,7,6,0)$ local frames.  All profiles except $b_5=14$ fail before a complete 5-block family.  At $b_5=14$ there are six distinct 5-block systems and 7104 complete 4-block families; zero satisfy any of the four Melchior-compatible line-22 forms $22T$, $21T+Q$, $20T+2Q$, or $21T+P_5$.
+
+The mixed branch has three point-orbit types and 4741 exact degree vectors.  No generalized-circle packing survives.
+
+\subsection{$B=83$ and the line bound}
+
+For $L\ge24$, pair/Melchior arithmetic leaves only $24T+6D$ and $25T+3D$, both excluded by fresh rooted allowable searches.  Thus $L\le23$.
+
+At $B=83$, only $22T+Q+6D$ and $23T+9D$ remain.  The mixed type has 44 rooted cases, all terminal.  The all-triple type is enumerated in 15,565,063 nodes, yielding 96 labelled systems and one unlabelled hypergraph.  An explicit projective parameterization gives polynomial identities that force $w=0$ despite the distinctness requirement $w\ne0$.
+
+\section{Earlier finite packages and uniform range}
+
+The base package contains separate source and proof ledgers for:
+\begin{itemize}
+\item $n=8$: construction and exact leave/Fano/parity lower bound;
+\item $n=9$: exact DFS with a metric obstruction for the exceptional abstract packet;
+\item $n=10$: carrier reductions and exact $5+5$, $6+4$ terminals;
+\item $n=11$: complete finite profile chain;
+\item $n=14,15$: exact finite classifications using stated line-arrangement inputs;
+\item $n=16$: weighted inversion and a six-seven-circle intersection obstruction;
+\item $n\ge17$: carrier matching plus weighted Langer--Melchior inversion.
+\end{itemize}
+All external inputs are listed in an audit file with exact theorem statements and references.
+
+\section{Recommended independent checks}
+
+The strongest independent audit would not merely rerun the same binaries.  Recommended clean-room targets are:
+\begin{enumerate}
+\item regenerate the $n=12$ 118-type local classification;
+\item regenerate the thirteen $n=12$ profile table and the count 4479;
+\item independently enumerate the $n=13,B=80$ degree systems and 695 branches;
+\item independently test the 7104 $B=82,k=14$ complete families for a line-22 skeleton;
+\item reconstruct the 96 labelled $23T$ systems and their unique isomorphism class;
+\item verify the projective polynomial identity symbolically or by a proof assistant.
+\end{enumerate}
+
+\section{Archival and citation policy}
+
+The verification DOI should cite a specific immutable release.  Corrections must be made as a new version with a new version DOI, retaining the old record.  Public claims should identify the exact release SHA-256.  Historical failed/WIP packages may be archived separately for research history but must not be confused with the canonical proof object.
+
+\section{Generative-AI disclosure}
+
+Generative-AI systems assisted exploratory proof search, code drafting, debugging, orchestration and writing.  They are not authors.  The named human author(s) must review and accept responsibility for the released claims and files.  AI-produced assertions are not certificates; only explicit mathematics, exact source, inputs, outputs, manifests and replay commands enter the proof record.
 
 \end{document}
