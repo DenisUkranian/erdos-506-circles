@@ -1,0 +1,21 @@
+{
+  "title": "Erdos506: exact verification archive for the minimum-circle problem",
+  "upload_type": "software",
+  "description": "A self-contained computer-assisted verification archive accompanying the preprint The Minimum Number of Circles Determined by Planar Point Sets under the Elliott-Purdy-Smith Convention. The release verifies f(8)=17 and f(n)=1+binom(n-1,2)-floor((n-1)/2) for every n>=9, including the finite terminals f(12)=51 and f(13)=61.",
+  "creators": [
+    {
+      "name": "Paliy, Denis",
+      "affiliation": "Independent researcher"
+    }
+  ],
+  "keywords": [
+    "Erdos problem 506",
+    "discrete geometry",
+    "circles determined by points",
+    "computer-assisted proof",
+    "pseudoline arrangements",
+    "exact enumeration"
+  ],
+  "license": "MIT",
+  "access_right": "open"
+}
