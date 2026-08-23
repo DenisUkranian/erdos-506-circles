@@ -11,7 +11,7 @@ The complete LaTeX sources are committed here:
 - `supplement.tex`
 - `references.bib`
 
-Ready-to-upload source archives are also included:
+Ready-to-upload source archives are distributed as release assets:
 
 - `arxiv-source.zip`
 - `supplement-source.zip`
