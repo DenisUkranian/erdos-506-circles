@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 jobs:
   create-draft-release:
@@ -16,18 +17,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create draft release v1.0.0
+      - name: Create or confirm draft release v1.0.0
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           if gh release view v1.0.0 >/dev/null 2>&1; then
-            echo "Release v1.0.0 already exists; leaving it unchanged."
+            result="Draft release v1.0.0 already exists and is ready for asset upload."
           else
             gh release create v1.0.0 \
               --draft \
               --target main \
               --title "Erdős Problem 506 — proof and verification archive v1.0.0" \
               --notes-file RELEASE_NOTES.md
-            echo "DRAFT_RELEASE_V1_CREATED=PASSED"
+            result="Draft release v1.0.0 was created automatically and is ready for asset upload."
           fi
+          echo "$result"
+          gh issue comment 1 --body "### Automated publication update\n\n${result}\n\nNext: attach the five files listed in ASSET_SHA256SUMS.txt, verify their hashes, then publish the release and run the quick-verification workflow."
+          echo "DRAFT_RELEASE_V1_WORKFLOW=PASSED"
