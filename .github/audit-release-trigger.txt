@@ -1,1 +1,1 @@
-Audit the files currently attached to draft release v1.0.0 on 2026-08-24.
+Audit the files currently attached to draft release v1.0.0 through the REST API on 2026-08-24.
