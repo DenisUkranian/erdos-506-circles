@@ -1,0 +1,35 @@
+\section{Introduction}
+
+Erd\H{o}s asked for the minimum number of circles determined by $n$ planar points not all on one circle \cite{erdos1961}.  As written, the problem permits an all-collinear set and therefore has the trivial answer zero.  Elliott's work \cite{elliott1967} and the later formulation of Purdy and Smith \cite{purdysmith2010} make clear the intended nondegenerate setting: the points are distinct, not all collinear, and not all concyclic.  We work only in this setting and count only proper Euclidean circles.
+
+For an admissible finite set $S\subset\R^2$, let $q(S)$ be the number of distinct proper circles that contain at least three points of $S$, and define
+\[
+ f(n)=\min\{q(S): |S|=n,\ S\text{ admissible}\}.
+\]
+The standard construction takes $n-1$ points on a circle and one additional point $p$.  Arrange
+$\lfloor(n-1)/2\rfloor$ disjoint pairs of carrier points on secants through $p$.  Every remaining pair of carrier points, together with $p$, determines a distinct proper circle, and the carrier circle contributes one further circle.  Hence
+\begin{equation}\label{eq:construction}
+ f(n)\le F(n):=1+\binom{n-1}{2}-\left\lfloor\frac{n-1}{2}\right\rfloor.
+\end{equation}
+
+Purdy and Smith proved the corresponding lower bound for sufficiently large $n$ \cite{purdysmith2010}.  The purpose of this paper and its verification supplement is to remove the remaining threshold and settle the finite exceptional range.
+
+\begin{theorem}[Main theorem]\label{thm:main}
+Under the nondegeneracy convention above,
+\[
+ f(8)=17,
+\]
+and for every $n\ge9$,
+\[
+ f(n)=1+\binom{n-1}{2}-\left\lfloor\frac{n-1}{2}\right\rfloor.
+\]
+In particular, $f(12)=51$ and $f(13)=61$.
+\end{theorem}
+
+The small admissible cases below eight are elementary and are not the computational content of the present work.  The proof of \cref{thm:main} has three qualitatively different parts:
+\begin{enumerate}
+\item exact finite proofs for $8\le n\le16$;
+\item a uniform incidence-theoretic proof for $n\ge17$;
+\item especially detailed terminal classifications for the two formerly open cases $n=12,13$.
+\end{enumerate}
+
