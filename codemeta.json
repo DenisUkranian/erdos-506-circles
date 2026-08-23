@@ -1,0 +1,25 @@
+{
+  "@context": "https://doi.org/10.5063/schema/codemeta-2.0",
+  "@type": "SoftwareSourceCode",
+  "name": "Erdos506 verification archive",
+  "description": "Self-contained exact verification archive for the minimum number of proper circles determined by nondegenerate planar point sets.",
+  "version": "1.0.0",
+  "datePublished": "2026-08-21",
+  "license": "https://spdx.org/licenses/MIT.html",
+  "programmingLanguage": [
+    "Python",
+    "C++",
+    "Bash"
+  ],
+  "runtimePlatform": "Linux or Unix-like environment",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Denis Paliy",
+      "affiliation": "Independent researcher",
+      "email": "denisukranian608@gmail.com"
+    }
+  ],
+  "codeRepository": "https://github.com/DenisUkranian/erdos-506-circles",
+  "issueTracker": "https://github.com/DenisUkranian/erdos-506-circles/issues"
+}
