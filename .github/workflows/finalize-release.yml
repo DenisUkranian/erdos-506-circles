@@ -1,0 +1,55 @@
+name: finalize-release-v1
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  finalize:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify all release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/erdos506-release
+          gh release download v1.0.0 --dir /tmp/erdos506-release
+          while read -r expected name; do
+            test -n "$expected"
+            test -n "$name"
+            test -s "/tmp/erdos506-release/$name"
+          done < ASSET_SHA256SUMS.txt
+          (cd /tmp/erdos506-release && sha256sum -c "$GITHUB_WORKSPACE/ASSET_SHA256SUMS.txt")
+          echo "RELEASE_ASSET_HASHES=PASSED"
+
+      - name: Run canonical quick verification
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/erdos506-proof
+          mkdir -p /tmp/erdos506-proof
+          unzip -q /tmp/erdos506-release/Erdos506.zip -d /tmp/erdos506-proof
+          cd /tmp/erdos506-proof/Erdos506
+          python3 verify.py | tee /tmp/erdos506-quick.log
+          grep -F 'ERDOS506_QUICK_AUDIT=PASSED' /tmp/erdos506-quick.log
+          echo "CANONICAL_QUICK_REPLAY=PASSED"
+
+      - name: Publish verified release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release edit v1.0.0 --draft=false --latest
+          echo "GITHUB_RELEASE_V1_PUBLISHED=PASSED"
+
+      - name: Close publication checklist issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue close 1 --reason completed --comment "Release v1.0.0 was hash-verified, the canonical quick proof replay ended with ERDOS506_QUICK_AUDIT=PASSED, and the release was published. The repository may now be changed from Private to Public."
