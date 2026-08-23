@@ -16,19 +16,45 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Download current draft release assets
+
+      - name: Download assets from the private draft release through the REST API
+        id: audit
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          mkdir -p /tmp/release-assets
+          {
+            release_id="$(gh api "repos/${GITHUB_REPOSITORY}/releases" --paginate --jq '.[] | select(.tag_name=="v1.0.0") | .id' | head -1)"
+            test -n "$release_id"
+            echo "release_id=$release_id"
+            gh api "repos/${GITHUB_REPOSITORY}/releases/${release_id}/assets" --paginate --jq '.[] | [.id,.name] | @tsv' > /tmp/assets.tsv
+            test -s /tmp/assets.tsv
+            while IFS=$'\t' read -r asset_id asset_name; do
+              echo "downloading $asset_name ($asset_id)"
+              gh api -H 'Accept: application/octet-stream' "repos/${GITHUB_REPOSITORY}/releases/assets/${asset_id}" > "/tmp/release-assets/${asset_name}"
+            done < /tmp/assets.tsv
+            (cd /tmp/release-assets && sha256sum * | sort) > /tmp/release-assets.sha256
+            cat /tmp/release-assets.sha256
+          } > /tmp/release-audit.log 2>&1
+          rc=$?
+          echo "rc=$rc" >> /tmp/release-audit.log
+          exit $rc
+
+      - name: Report current draft release assets
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ steps.audit.outcome }}
         run: |
           set -euo pipefail
-          mkdir -p /tmp/release-assets
-          gh release download v1.0.0 --dir /tmp/release-assets
-          find /tmp/release-assets -maxdepth 1 -type f -printf '%f\n' | sort
-          (cd /tmp/release-assets && sha256sum * | sort) > /tmp/release-assets.sha256
-      - name: Report current release assets
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          hashes="$(cat /tmp/release-assets.sha256)"
-          gh issue comment 1 --body "### Current draft release asset audit\n\nThe following files are currently attached to draft release v1.0.0:\n\n\`\`\`text\n${hashes}\n\`\`\`"
-          echo "DRAFT_RELEASE_ASSET_AUDIT=PASSED"
+          if [ "$OUTCOME" = "success" ]; then
+            hashes="$(cat /tmp/release-assets.sha256)"
+            gh issue comment 1 --body "### Current draft release asset audit\n\nThe following files are currently attached to draft release v1.0.0:\n\n\`\`\`text\n${hashes}\n\`\`\`"
+            echo "DRAFT_RELEASE_ASSET_AUDIT=PASSED"
+          else
+            log="$(tail -80 /tmp/release-audit.log)"
+            gh issue comment 1 --body "### Draft release asset audit failed with log\n\n\`\`\`text\n${log}\n\`\`\`"
+            exit 1
+          fi
