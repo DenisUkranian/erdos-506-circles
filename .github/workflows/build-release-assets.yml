@@ -18,10 +18,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Announce build start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue comment 1 --body "### Automated release-asset build started\n\nGitHub Actions is compiling the manuscript and supplement and will upload four generated assets to the private draft release v1.0.0."
+
       - name: Install TeX and archive tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y latexmk texlive-latex-extra texlive-fonts-recommended zip
+          sudo apt-get install -y latexmk texlive-latex-extra texlive-fonts-recommended zip poppler-utils
 
       - name: Build manuscript and supplement
         env:
@@ -41,8 +46,8 @@ jobs:
                     dist/erdos506_computational_supplement.pdf \
                     dist/erdos506_preprint.pdf \
                     dist/supplement-source.zip > dist/GENERATED_ASSET_SHA256SUMS.txt
-          pdfinfo dist/erdos506_preprint.pdf | grep '^Pages:'
-          pdfinfo dist/erdos506_computational_supplement.pdf | grep '^Pages:'
+          test "$(pdfinfo dist/erdos506_preprint.pdf | awk '/^Pages:/ {print $2}')" = "8"
+          test "$(pdfinfo dist/erdos506_computational_supplement.pdf | awk '/^Pages:/ {print $2}')" = "5"
 
       - name: Upload four generated assets to draft release
         env:
@@ -57,11 +62,18 @@ jobs:
             dist/GENERATED_ASSET_SHA256SUMS.txt \
             --clobber
 
-      - name: Report generated hashes
+      - name: Report workflow result
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
-          hashes="$(sed 's#  dist/#  #' dist/GENERATED_ASSET_SHA256SUMS.txt)"
-          gh issue comment 1 --body "### Automated release-asset build completed\n\nThe four source-derived assets were compiled and uploaded to the private draft release v1.0.0.\n\n\`\`\`text\n${hashes}\n\`\`\`\n\nThe only remaining binary to attach is \`Erdos506.zip\`, expected SHA-256 \`528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3\`."
-          echo "GENERATED_RELEASE_ASSETS_V1=PASSED"
+          if [ "$JOB_STATUS" = "success" ]; then
+            hashes="$(sed 's#  dist/#  #' dist/GENERATED_ASSET_SHA256SUMS.txt)"
+            gh issue comment 1 --body "### Automated release-asset build completed\n\nThe four source-derived assets were compiled and uploaded to the private draft release v1.0.0.\n\n\`\`\`text\n${hashes}\n\`\`\`\n\nThe only remaining binary to attach is \`Erdos506.zip\`, expected SHA-256 \`528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3\`."
+            echo "GENERATED_RELEASE_ASSETS_V1=PASSED"
+          else
+            gh issue comment 1 --body "### Automated release-asset build failed\n\nThe GitHub Actions run did not complete successfully. Open the latest \`build-and-upload-release-assets-v1\` workflow run and inspect its failed step. No draft release assets should be treated as final until the workflow reports success."
+            exit 1
+          fi
