@@ -1,6 +1,6 @@
 # GitHub Release `v1.0.0` — final publication step
 
-A private draft release has already been created automatically. Four source-derived assets have already been compiled and uploaded by GitHub Actions:
+A private draft release has already been created automatically. Four source-derived assets have been compiled, page-checked, made reproducible where applicable, and uploaded by GitHub Actions:
 
 ```text
 erdos506_preprint.pdf
@@ -9,7 +9,7 @@ arxiv-source.zip
 supplement-source.zip
 ```
 
-Their current SHA-256 values are recorded in `ASSET_SHA256SUMS.txt` and in the release asset `GENERATED_ASSET_SHA256SUMS.txt`.
+Their final SHA-256 values are recorded in `ASSET_SHA256SUMS.txt`.
 
 ## One remaining upload
 
@@ -28,19 +28,26 @@ Expected SHA-256:
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-5. Confirm that all five publication assets are present.
-6. Compare their hashes with `ASSET_SHA256SUMS.txt`.
-7. Keep **Set as a pre-release** unchecked.
-8. Publish the release.
+Do not publish the release manually yet.
 
-## After publishing
+## Automated verification and publication
 
-Run the manual workflow **quick-verification** under the repository's Actions tab. It should end with:
+After the upload:
 
-```text
-ERDOS506_REPOSITORY_QUICK=PASSED
-```
+1. Open **Actions**.
+2. Select **finalize-release-v1**.
+3. Select **Run workflow** on branch `main`.
 
-The **full-verification-manual** workflow performs the full computational replay and may take several hours.
+The workflow will:
 
-Do not make the repository public until the published release page opens correctly and the quick workflow succeeds.
+- download all five release assets;
+- verify every SHA-256 against `ASSET_SHA256SUMS.txt`;
+- unpack `Erdos506.zip`;
+- run the canonical quick proof audit;
+- require `ERDOS506_QUICK_AUDIT=PASSED`;
+- publish release `v1.0.0` only after all checks pass;
+- close issue #1 as completed.
+
+After that workflow succeeds, change repository visibility from **Private** to **Public**.
+
+The separate **full-verification-manual** workflow performs the full computational replay and may take several hours.
