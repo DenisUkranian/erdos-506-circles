@@ -1,0 +1,15 @@
+\section{The uniform range $n\ge17$}
+
+Let $m$ be the maximum number of selected points on a line or proper circle and write $k=n-m$.  A carrier-matching argument gives the uniform lower bound
+\begin{equation}\label{eq:carrier}
+ q(S)\ge 1+k\left(\binom m2-\left\lfloor\frac m2\right\rfloor\right)
+ -\binom k2\left\lfloor\frac m2\right\rfloor.
+\end{equation}
+For a line carrier the corresponding estimate is at least as strong.  If $3m\ge2n+2$, \cref{eq:carrier} directly gives $q(S)\ge F(n)$.
+
+In the complementary small-carrier regime, inversion at every selected point, the radial-weight bound and \cref{eq:weightedLM} yield
+\begin{equation}\label{eq:globalq}
+ q(S)\ge \frac{(N+1)(N^3+54)}{18(2N+3)},\qquad N=n-1.
+\end{equation}
+Direct polynomial comparison closes $n\ge19$; the boundary values $n=17,18$ are handled by retaining the exact integral carrier cap rather than the relaxed bound.  Together with the construction \cref{eq:construction}, this proves $f(n)=F(n)$ for every $n\ge17$.  The complete algebraic comparison and exact arithmetic checker are included in the archive \cite{verificationarchive}.
+
