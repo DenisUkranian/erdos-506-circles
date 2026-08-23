@@ -1,2 +1,0 @@
-Run the corrected final deterministic release asset build.
-The supplement source is monolithic; triggered on 2026-08-24.
