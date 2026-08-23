@@ -1,0 +1,31 @@
+\section{Inversion and line-arrangement input}
+
+Fix $p\in S$ and invert the remaining $N=n-1$ points about $p$.  A proper circle through $p$ becomes a nonradial line, while a line through $p$ becomes a radial line.  This transforms local circle incidences into line arrangements and permits the use of Melchior's inequality, ordinary-line bounds and Langer's incidence inequality \cite{kellymoser1958,csimasawyer1993,langer2003,dezeeuw2018}.
+
+Let $\ell_j(p)$ denote the number of spanned lines in the inverted set containing exactly $j$ inverted points and put
+\[
+ W_p=\sum_{j\ge2}\frac{\ell_j(p)}{j+1}.
+\]
+If radial lines are retained, summing $W_p$ over $p\in S$ counts every generalized-circle block exactly once:
+\begin{equation}\label{eq:weightedall}
+ \sum_{p\in S}W_p=B.
+\end{equation}
+If radial terms are removed, the same weighting counts proper-circle blocks exactly once.
+
+For $N$ real planar points with at most $R\le2N/3$ collinear, the pair identity, Melchior's inequality and Langer's inequality imply the exact dual estimate
+\begin{equation}\label{eq:weightedLM}
+ W\ge
+ \frac{N^2R+2N^2+3NR-6N+18R+36}{36(R+1)}.
+\end{equation}
+Indeed, with
+\[
+ \alpha=\frac{R+2}{18(R+1)},\quad
+ \beta=\frac{R+2}{6(R+1)},\quad
+ \gamma=\frac{R-1}{36(R+1)},
+\]
+the coefficientwise slack for a $j$-point line factors as
+\[
+ \frac{(R-j)(j-3)(j-2)}{12(R+1)(j+1)}\ge0.
+\]
+This is the weighted Langer--Melchior certificate used in the global range and in the $n=16$ boundary case.  Simplicial-arrangement classifications and pseudoline inequalities are used only in explicitly identified finite branches \cite{cuntz2012,shnurnikov2016}.
+
