@@ -1,1 +1,0 @@
-Run the final fail-closed audit of assets attached to private draft release v1.0.0 on 2026-08-24.
