@@ -3,67 +3,68 @@
 [![status](https://img.shields.io/badge/status-preprint-blue)](#status)
 [![verification](https://img.shields.io/badge/verification-replayable-brightgreen)](#verification)
 
-This repository accompanies the preprint
-**“The Minimum Number of Circles Determined by Planar Point Sets under the Elliott–Purdy–Smith Convention”** by **Denis Paliy** (Independent researcher, Kyiv, Ukraine).
+This repository accompanies the preprint **“The Minimum Number of Circles Determined by Planar Point Sets under the Elliott–Purdy–Smith Convention”** by **Denis Paliy** (Independent researcher, Kyiv, Ukraine).
 
 ## Result
 
 For distinct planar points that are not all collinear and not all concyclic, counting only proper Euclidean circles containing at least three selected points, the computer-assisted verification establishes
 
 - `f(8) = 17`;
-- for every `n >= 9`,
-  `f(n) = 1 + C(n-1,2) - floor((n-1)/2)`.
+- for every `n >= 9`, `f(n) = 1 + C(n-1,2) - floor((n-1)/2)`.
 
-In particular, the formerly unresolved finite cases are
-
-- `f(12) = 51`;
-- `f(13) = 61`.
+In particular, `f(12) = 51` and `f(13) = 61`.
 
 ## Paper
 
-- [Preprint PDF (release asset)](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_preprint.pdf)
-- [Computational supplement PDF (release asset)](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_computational_supplement.pdf)
-- [LaTeX source](paper/main.tex)
-- [LaTeX bibliography](paper/references.bib)
+- [Preprint PDF](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/erdos506_preprint.pdf)
+- [Computational supplement PDF](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/erdos506_computational_supplement.pdf)
+- [Complete LaTeX manuscript](paper/main.tex)
+- [Complete LaTeX supplement](paper/supplement.tex)
+- [arXiv source archive](https://github.com/DenisUkranian/erdos-506-circles/raw/assets/paper/arxiv-source.zip)
 
 ## Verification
 
-The canonical verification object is the GitHub Release asset `Erdos506.zip` in release `v1.0.0`.
-
-Expected SHA-256:
+The canonical proof object is `Erdos506.zip`, expected SHA-256:
 
 ```text
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-After downloading the release asset, place it at `verification/Erdos506.zip` and run:
+It will be attached to GitHub Release `v1.0.0`. After downloading it to `verification/Erdos506.zip`, run:
 
 ```bash
-cd verification
-sha256sum -c Erdos506.zip.sha256
-unzip Erdos506.zip
-cd Erdos506
-python3 verify.py          # quick integrity and retained-certificate audit
-python3 verify.py --full   # compile and rerun all proof packages
+bash verify_repository.sh
 ```
 
-Requirements: Linux/Unix shell, Python 3.10+, GNU C++20, Bash, `sha256sum`, and ZIP tools. No network is required after downloading the release asset.
+For the complete computational replay:
 
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the complete protocol.
+```bash
+rm -rf /tmp/erdos506-full
+mkdir -p /tmp/erdos506-full
+unzip -q verification/Erdos506.zip -d /tmp/erdos506-full
+cd /tmp/erdos506-full/Erdos506
+python3 verify.py --full
+```
+
+Expected markers:
+
+```text
+ERDOS506_QUICK_AUDIT=PASSED
+ERDOS506_FULL_REPLAY=PASSED
+```
+
+See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full protocol.
 
 ## Repository contents
 
-- `paper/` — manuscript, supplement, LaTeX and arXiv sources;
-- `verification/` — proof-bundle checksum, retained public replay log and release instructions;
+- `paper/` — complete manuscript and supplement sources;
+- branch `assets` — compiled PDFs and ready-to-upload source archives;
+- `verification/` — archive checksum, retained audit and instructions;
 - `CITATION.cff`, `codemeta.json`, `.zenodo.json` — archival metadata;
 - `AI_USAGE_DISCLOSURE.md` — disclosure and human-responsibility statement;
 - `LICENSE` — MIT license for software;
 - `LICENSE-DOCUMENTATION.md` — CC BY 4.0 for manuscript and original documentation.
 
-## Citation
-
-See [`CITATION.cff`](CITATION.cff). A permanent DOI and arXiv identifier will be added after the first archival deposits.
-
 ## Status
 
-Preprint / computer-assisted proof. Independent verification is explicitly invited. This repository does not claim journal peer review until a journal version is accepted.
+Preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review until a journal version is accepted.
