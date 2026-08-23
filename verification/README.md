@@ -1,8 +1,10 @@
-# Verification release asset
+# Verification archive
 
-The canonical proof bundle is intentionally distributed as the GitHub Release asset `Erdos506.zip` rather than committed to the source tree.
+Place the canonical GitHub Release asset at:
 
-Release: `v1.0.0`
+```text
+verification/Erdos506.zip
+```
 
 Expected SHA-256:
 
@@ -10,4 +12,4 @@ Expected SHA-256:
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-Download the asset into this directory, then follow `../REPRODUCIBILITY.md`.
+Then run `bash verify_repository.sh` from the repository root. See `../REPRODUCIBILITY.md` for the full replay.
