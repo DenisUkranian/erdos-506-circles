@@ -2,10 +2,6 @@ name: build-and-upload-release-assets-v1
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - .github/build-assets-trigger-v1.txt
 
 permissions:
   contents: write
@@ -21,7 +17,7 @@ jobs:
       - name: Announce build start
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh issue comment 1 --body "### Final deterministic release-asset build started\n\nGitHub Actions is compiling the 8-page manuscript and 5-page supplement, creating deterministic source archives, and preparing the private draft release v1.0.0."
+        run: gh issue comment 1 --body "### Manual deterministic release-asset rebuild started\n\nGitHub Actions is compiling the 8-page manuscript and 5-page supplement, creating deterministic source archives, and updating release v1.0.0."
 
       - name: Install TeX and PDF tools
         id: install
@@ -57,7 +53,6 @@ jobs:
               paper/main.tex paper/references.bib paper/main-sections
             cmp dist/arxiv-source.zip dist/arxiv-source.check.zip
 
-            # The supplement is intentionally self-contained in one canonical file.
             python3 tools/make_deterministic_zip.py \
               --base paper \
               --output dist/supplement-source.zip \
@@ -78,7 +73,7 @@ jobs:
             cat dist/GENERATED_ASSET_SHA256SUMS.txt
           } 2>&1 | tee /tmp/release-build.log
 
-      - name: Upload four generated assets to draft release
+      - name: Upload generated assets to release v1.0.0
         id: upload
         if: steps.install.outcome == 'success' && steps.build.outcome == 'success'
         continue-on-error: true
@@ -94,7 +89,7 @@ jobs:
             dist/GENERATED_ASSET_SHA256SUMS.txt \
             --clobber 2>&1 | tee /tmp/release-upload.log
 
-      - name: Report final workflow result
+      - name: Report workflow result
         if: always()
         env:
           GH_TOKEN: ${{ github.token }}
@@ -105,7 +100,7 @@ jobs:
           set -euo pipefail
           if [ "$INSTALL_OUTCOME" = "success" ] && [ "$BUILD_OUTCOME" = "success" ] && [ "$UPLOAD_OUTCOME" = "success" ]; then
             hashes="$(sed 's#  dist/#  #' dist/GENERATED_ASSET_SHA256SUMS.txt)"
-            gh issue comment 1 --body "### Final deterministic release-asset build completed\n\nThe manuscript and supplement compiled with the required page counts. Both source ZIPs were regenerated twice and compared byte-for-byte. The four source-derived assets were uploaded to the private draft release v1.0.0.\n\n\`\`\`text\n${hashes}\n\`\`\`\n\nThe sole remaining upload is \`Erdos506.zip\`, expected SHA-256 \`528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3\`."
+            gh issue comment 1 --body "### Manual deterministic release-asset rebuild completed\n\n\`\`\`text\n${hashes}\n\`\`\`"
             echo "GENERATED_RELEASE_ASSETS_V1=PASSED"
           else
             {
@@ -114,6 +109,6 @@ jobs:
               test -f /tmp/release-upload.log && tail -30 /tmp/release-upload.log || true
             } > /tmp/final-failure.log
             log="$(cat /tmp/final-failure.log)"
-            gh issue comment 1 --body "### Final deterministic release-asset build failed\n\n\`\`\`text\n${log}\n\`\`\`"
+            gh issue comment 1 --body "### Manual deterministic release-asset rebuild failed\n\n\`\`\`text\n${log}\n\`\`\`"
             exit 1
           fi
