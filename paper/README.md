@@ -1,14 +1,16 @@
 # Paper files
 
-Complete LaTeX sources:
+Complete editable sources:
 
 - `main.tex` with the manuscript sections in `main-sections/`;
-- `supplement.tex`, a complete monolithic computational supplement;
+- `supplement.tex`, the computational supplement and verification manual;
 - `references.bib`, machine-readable bibliography metadata.
 
-Compiled PDFs and ready-to-upload source archives are stored on the `assets` branch:
+The following compiled and ready-to-submit files are distributed with GitHub Release `v1.0.0`:
 
-- `paper/erdos506_preprint.pdf`;
-- `paper/erdos506_computational_supplement.pdf`;
-- `paper/arxiv-source.zip`;
-- `paper/supplement-source.zip`.
+- `erdos506_preprint.pdf`;
+- `erdos506_computational_supplement.pdf`;
+- `arxiv-source.zip`;
+- `supplement-source.zip`.
+
+Their exact SHA-256 values are recorded in `../ASSET_SHA256SUMS.txt`.
