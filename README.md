@@ -24,7 +24,7 @@ In particular, the formerly unresolved finite cases are
 - [Preprint PDF (release asset)](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_preprint.pdf)
 - [Computational supplement PDF (release asset)](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_computational_supplement.pdf)
 - [LaTeX source](paper/main.tex)
-- [arXiv source archive](paper/arxiv-source.zip)
+- [LaTeX bibliography](paper/references.bib)
 
 ## Verification
 
