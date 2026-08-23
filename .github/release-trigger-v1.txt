@@ -1,2 +1,2 @@
-Create the private draft release v1.0.0 from RELEASE_NOTES.md.
-Triggered on 2026-08-24.
+Create or confirm the private draft release v1.0.0 from RELEASE_NOTES.md.
+Retriggered on 2026-08-24 after adding issue status reporting.
