@@ -29,7 +29,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh issue comment 3 --body "### Independent Lean cross-check started\n\nGitHub Actions is rebuilding pinned commit `f647646e77e48c10cf7928d5203214b520537506` of `rafalwronapl/erdos506-review-package-2026-08-16`, running the canonical theorem builds, source-hygiene checks, and `AxiomsAudit.lean`."
+          cat > /tmp/start-comment.md <<'EOF'
+          ### Independent Lean cross-check started
+
+          GitHub Actions is rebuilding pinned commit `f647646e77e48c10cf7928d5203214b520537506` of `rafalwronapl/erdos506-review-package-2026-08-16`, running the canonical theorem builds, source-hygiene checks, and `AxiomsAudit.lean`.
+          EOF
+          gh issue comment 3 --body-file /tmp/start-comment.md
 
       - name: Install Lean toolchain manager and utilities
         id: install
@@ -41,7 +46,7 @@ jobs:
           curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
-      - name: Record pinned source identity and verify payload checksums
+      - name: Record and verify pinned source identity
         id: identity
         if: steps.install.outcome == 'success'
         continue-on-error: true
@@ -50,7 +55,9 @@ jobs:
           set -euo pipefail
           git rev-parse HEAD | tee /tmp/external-lean-commit.txt
           test "$(git rev-parse HEAD)" = "f647646e77e48c10cf7928d5203214b520537506"
-          sha256sum -c CHECKSUMS.sha256 | tee /tmp/external-lean-checksums.log
+          test -z "$(git status --porcelain)"
+          git fsck --no-dangling 2>&1 | tee /tmp/external-lean-git-fsck.log
+          echo PINNED_SOURCE_IDENTITY=PASSED | tee /tmp/external-lean-identity.log
 
       - name: Source hygiene audit
         id: hygiene
@@ -102,10 +109,10 @@ jobs:
         run: |
           set -euo pipefail
           lake env lean -DwarningAsError=true AxiomsAudit.lean 2>&1 | tee /tmp/external-lean-axioms.log
-          ! grep -E '^.* depends on axioms:.*(sorryAx|Classical\.choice.*sorry|propext.*sorry)' /tmp/external-lean-axioms.log
+          ! grep -F 'sorryAx' /tmp/external-lean-axioms.log
           echo AXIOMS_AUDIT=PASSED
 
-      - name: Verify canonical theorem signatures
+      - name: Verify canonical theorem signatures and target values
         id: theorem
         if: steps.axioms.outcome == 'success'
         continue-on-error: true
@@ -160,9 +167,29 @@ jobs:
           summary="install=$INSTALL identity=$IDENTITY hygiene=$HYGIENE deps=$DEPS build=$BUILD axioms=$AXIOMS theorem=$THEOREM"
           if [ "$INSTALL" = success ] && [ "$IDENTITY" = success ] && [ "$HYGIENE" = success ] && [ "$DEPS" = success ] && [ "$BUILD" = success ] && [ "$AXIOMS" = success ] && [ "$THEOREM" = success ]; then
             theorem_output="$(tail -30 /tmp/external-lean-theorem.log)"
-            gh issue comment 3 --body "### Independent Lean cross-check passed\n\nPinned commit: `f647646e77e48c10cf7928d5203214b520537506`.\n\nAll payload checksums, source-hygiene checks, four Lean builds, strict axiom audit, and canonical theorem signature checks passed.\n\n\`\`\`text\n${theorem_output}\n\`\`\`\n\nWorkflow outcomes: `${summary}`. The full logs are retained as the `independent-lean-closure-audit` artifact."
+            cat > /tmp/result-comment.md <<EOF
+          ### Independent Lean cross-check passed
+
+          Pinned commit: `f647646e77e48c10cf7928d5203214b520537506`.
+
+          Source identity, source-hygiene checks, four Lean builds, strict axiom audit, and canonical theorem signature checks passed.
+
+          \`\`\`text
+          ${theorem_output}
+          \`\`\`
+
+          Workflow outcomes: `${summary}`. The full logs are retained as the `independent-lean-closure-audit` artifact.
+          EOF
+            gh issue comment 3 --body-file /tmp/result-comment.md
             echo INDEPENDENT_LEAN_CLOSURE_AUDIT=PASSED
           else
-            gh issue comment 3 --body "### Independent Lean cross-check failed or was incomplete\n\nWorkflow outcomes: `${summary}`. Inspect the `independent-lean-closure-audit` artifact and failed step before relying on the separate formalization."
+            cat > /tmp/result-comment.md <<EOF
+          ### Independent Lean cross-check failed or was incomplete
+
+          Workflow outcomes: `${summary}`.
+
+          Inspect the `independent-lean-closure-audit` artifact and the failed step before relying on the separate formalization.
+          EOF
+            gh issue comment 3 --body-file /tmp/result-comment.md
             exit 1
           fi
