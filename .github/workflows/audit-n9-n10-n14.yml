@@ -17,6 +17,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  RELEASE_TAG: v1.0.0
   ARCHIVE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 
 jobs:
@@ -31,7 +32,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
           echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
           unzip -q Erdos506.zip -d outer
           unzip -q outer/Erdos506/packages/base.zip -d base
@@ -65,7 +66,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
           echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
           unzip -q Erdos506.zip -d outer
           unzip -q outer/Erdos506/packages/base.zip -d base
@@ -106,7 +107,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
           echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
           unzip -q Erdos506.zip -d outer
           unzip -q outer/Erdos506/packages/base.zip -d base
@@ -143,9 +144,10 @@ jobs:
         run: |
           set -euo pipefail
           summary="n9=$N9 n10=$N10 n14=$N14"
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
           if [ "$N9" = success ] && [ "$N10" = success ] && [ "$N14" = success ]; then
-            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replays passed\n\nCanonical release: \`v1.0.1\`. Archive SHA-256: \`$ARCHIVE_SHA256\`.\n\n- n=9 complete exact replay: PASS, \`f(9)=25\`;\n- n=10 dependency-free core plus all 61 AA and all 61 AB CaDiCaL branches: PASS, \`f(10)=33\`;\n- n=14 fast audit plus extended 86-job / slow-classification / 286-placement regeneration: PASS, \`f(14)=73\`.\n\nWorkflow outcomes: \`$summary\`. Logs are retained as workflow artifacts. Commit: \`$GITHUB_SHA\`."
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replays passed\n\nCanonical release: \`$RELEASE_TAG\`. Archive SHA-256: \`$ARCHIVE_SHA256\`.\n\n- n=9 complete exact replay: PASS, \`f(9)=25\`;\n- n=10 dependency-free core plus all 61 AA and all 61 AB CaDiCaL branches: PASS, \`f(10)=33\`;\n- n=14 fast audit plus extended 86-job / slow-classification / 286-placement regeneration: PASS, \`f(14)=73\`.\n\nWorkflow outcomes: \`$summary\`. Logs are retained as workflow artifacts. Run: $run_url. Commit: \`$GITHUB_SHA\`."
           else
-            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replay failed or is incomplete\n\nWorkflow outcomes: \`$summary\`. Inspect the workflow jobs and retained artifacts before relying on these three cases. Commit: \`$GITHUB_SHA\`."
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replay failed or is incomplete\n\nCanonical release: \`$RELEASE_TAG\`. Workflow outcomes: \`$summary\`. Inspect the workflow jobs and retained artifacts at $run_url. Commit: \`$GITHUB_SHA\`."
             exit 1
           fi
