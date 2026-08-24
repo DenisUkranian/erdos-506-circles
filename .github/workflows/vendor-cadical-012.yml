@@ -1,0 +1,46 @@
+name: vendor-cadical-wasm-0.1.2
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+    paths:
+      - .github/workflows/vendor-cadical-012.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install and package the pinned SAT backend
+        run: |
+          set -euo pipefail
+          mkdir -p payload/sat_env
+          npm install --prefix payload/sat_env --no-audit --no-fund --ignore-scripts cadical-wasm@0.1.2
+          test -s payload/sat_env/node_modules/cadical-wasm/dist/index.js
+          test -s payload/sat_env/node_modules/cadical-wasm/dist/cadical.wasm
+          node -e "import(process.argv[1]).then(()=>console.log('cadical-wasm@0.1.2 import: PASSED'))" "$(realpath payload/sat_env/node_modules/cadical-wasm/dist/index.js)"
+          find payload/sat_env -type f -print0 | LC_ALL=C sort -z | xargs -0 sha256sum > payload/SAT_VENDOR_MANIFEST.sha256
+          (cd payload && sha256sum -c SAT_VENDOR_MANIFEST.sha256)
+          tar --sort=name --mtime='UTC 2026-08-24' --owner=0 --group=0 --numeric-owner -czf cadical-wasm-0.1.2-vendor.tar.gz -C payload sat_env SAT_VENDOR_MANIFEST.sha256
+          sha256sum cadical-wasm-0.1.2-vendor.tar.gz | tee cadical-wasm-0.1.2-vendor.tar.gz.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cadical-wasm-0.1.2-vendor
+          path: |
+            cadical-wasm-0.1.2-vendor.tar.gz
+            cadical-wasm-0.1.2-vendor.tar.gz.sha256
+      - name: Report completion
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Vendored SAT backend prepared\n\nThe workflow installed and smoke-tested \`cadical-wasm@0.1.2\`, generated a file-level SHA-256 manifest, and uploaded the deterministic vendor tarball as the \`cadical-wasm-0.1.2-vendor\` workflow artifact. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID. Commit: \`$GITHUB_SHA\`."
