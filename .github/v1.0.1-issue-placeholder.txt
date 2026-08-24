@@ -1,1 +1,0 @@
-The v1.0.1 publication workflow reports completion through the repository issue tracker.

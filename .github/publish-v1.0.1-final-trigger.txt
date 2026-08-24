@@ -1,1 +1,1 @@
-Trigger the fail-closed audited v1.0.1 source and metadata patch release on 2026-08-24.
+Retrigger audited v1.0.1 publication from the cleaned latest main snapshot on 2026-08-24.
