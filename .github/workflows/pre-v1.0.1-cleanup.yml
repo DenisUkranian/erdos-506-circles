@@ -1,0 +1,29 @@
+name: pre-v1.0.1-cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/pre-v1.0.1-cleanup-trigger.txt
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Remove temporary status files and retrigger audited publication from latest main
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm -f V1_0_1_AUDIT_PATCH_TRACKER.md ISSUE_2_INSTRUCTIONS.md V101_STATUS.md .github/v1.0.1-issue-placeholder.txt || true
+          printf 'Retrigger audited v1.0.1 publication from the cleaned latest main snapshot on 2026-08-24.\n' > .github/publish-v1.0.1-final-trigger.txt
+          git rm -f .github/workflows/pre-v1.0.1-cleanup.yml .github/pre-v1.0.1-cleanup-trigger.txt
+          git add .github/publish-v1.0.1-final-trigger.txt
+          git commit -m 'Clean temporary v1.0.1 files and retrigger final publication'
+          git push origin HEAD:main
