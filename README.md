@@ -1,7 +1,8 @@
 # Erdős Problem 506 — minimum circles determined by planar points
 
-[![status](https://img.shields.io/badge/status-preprint-blue)](#status)
+[![status](https://img.shields.io/badge/status-public%20preprint-blue)](#status)
 [![verification](https://img.shields.io/badge/verification-replayable-brightgreen)](#verification)
+[![release](https://img.shields.io/badge/release-v1.0.0-blue)](https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.0)
 
 This repository accompanies the preprint **“The Minimum Number of Circles Determined by Planar Point Sets under the Elliott–Purdy–Smith Convention”** by **Denis Paliy** (Independent researcher, Kyiv, Ukraine).
 
@@ -14,16 +15,19 @@ For distinct planar points that are not all collinear and not all concyclic, cou
 
 In particular, `f(12) = 51` and `f(13) = 61`.
 
-## Paper
+## Published release
 
-The following files will be attached to GitHub Release `v1.0.0`:
+GitHub Release [`v1.0.0`](https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.0) is published and contains:
 
-- `erdos506_preprint.pdf`;
-- `erdos506_computational_supplement.pdf`;
-- `arxiv-source.zip`;
-- `supplement-source.zip`.
+- [`Erdos506.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/Erdos506.zip) — canonical proof and verification archive;
+- [`erdos506_preprint.pdf`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_preprint.pdf) — main preprint;
+- [`erdos506_computational_supplement.pdf`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/erdos506_computational_supplement.pdf) — computational supplement;
+- [`arxiv-source.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/arxiv-source.zip) — manuscript source prepared for arXiv;
+- [`supplement-source.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.0/supplement-source.zip) — supplement source.
 
-The complete editable sources are already committed:
+The exact release hashes are recorded in [`ASSET_SHA256SUMS.txt`](ASSET_SHA256SUMS.txt).
+
+The complete editable sources are also committed:
 
 - [LaTeX manuscript](paper/main.tex);
 - [computational supplement](paper/supplement.tex);
@@ -31,13 +35,13 @@ The complete editable sources are already committed:
 
 ## Verification
 
-The canonical proof object is the Release asset `Erdos506.zip`, expected SHA-256:
+The canonical proof object is `Erdos506.zip`, SHA-256:
 
 ```text
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-After downloading it to `verification/Erdos506.zip`, run:
+Download it to `verification/Erdos506.zip`, then run:
 
 ```bash
 bash verify_repository.sh
@@ -60,7 +64,7 @@ ERDOS506_QUICK_AUDIT=PASSED
 ERDOS506_FULL_REPLAY=PASSED
 ```
 
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full protocol and [RELEASE_CHECKLIST.md](RELEASE_CHECKLIST.md) for the one remaining release-upload step.
+The publication workflow hash-verified all five release assets and obtained `ERDOS506_QUICK_AUDIT=PASSED` before publishing `v1.0.0`. See [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [FINAL_RELEASE_AUDIT.md](FINAL_RELEASE_AUDIT.md), and [PUBLICATION_STATUS.md](PUBLICATION_STATUS.md).
 
 ## Repository contents
 
@@ -73,4 +77,4 @@ See [REPRODUCIBILITY.md](REPRODUCIBILITY.md) for the full protocol and [RELEASE_
 
 ## Status
 
-Preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review until a journal version is accepted.
+Public preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review until a journal version is accepted.
