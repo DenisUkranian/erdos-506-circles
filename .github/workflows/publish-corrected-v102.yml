@@ -1,0 +1,282 @@
+name: build-verify-publish-corrected-v1.0.2
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+    paths:
+      - .github/workflows/publish-corrected-v102.yml
+  workflow_dispatch:
+
+permissions:
+  actions: read
+  contents: write
+  issues: write
+
+concurrency:
+  group: publish-corrected-v102
+  cancel-in-progress: false
+
+env:
+  PREDECESSOR_TAG: v1.0.0
+  PREDECESSOR_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
+  VENDOR_ARTIFACT_ID: "9532636604"
+  RELEASE_TAG: v1.0.2
+
+jobs:
+  build-verify-publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Refuse to overwrite an existing v1.0.2 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing silent overwrite" >&2
+            exit 1
+          fi
+
+      - name: Download the immutable predecessor and audited SAT vendor artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p inputs dist audit
+          gh release download "$PREDECESSOR_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern Erdos506.zip --dir inputs
+          echo "$PREDECESSOR_SHA256  inputs/Erdos506.zip" | sha256sum -c -
+          gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$VENDOR_ARTIFACT_ID/zip" \
+            > inputs/cadical-vendor-artifact.zip
+          unzip -t inputs/cadical-vendor-artifact.zip
+
+      - name: Build the corrected archive twice and require deterministic identity
+        run: |
+          set -euo pipefail
+          python3 tools/build_corrected_archive_v102.py \
+            --original inputs/Erdos506.zip \
+            --vendor-artifact inputs/cadical-vendor-artifact.zip \
+            --work build-a \
+            --output dist/Erdos506.zip
+          python3 tools/build_corrected_archive_v102.py \
+            --original inputs/Erdos506.zip \
+            --vendor-artifact inputs/cadical-vendor-artifact.zip \
+            --work build-b \
+            --output dist/Erdos506.second.zip
+          cmp dist/Erdos506.zip dist/Erdos506.second.zip
+          rm dist/Erdos506.second.zip dist/Erdos506.second.zip.sha256
+          unzip -t dist/Erdos506.zip | tee audit/ZIP_TEST.log
+          sha256sum dist/Erdos506.zip | tee audit/Erdos506.zip.sha256
+
+      - name: Clean quick, v1.0.2 structural, and value audits
+        run: |
+          set -euo pipefail
+          rm -rf clean
+          unzip -q dist/Erdos506.zip -d clean
+          cd clean/Erdos506
+          python3 verify.py 2>&1 | tee ../../audit/QUICK.log
+          grep -F 'ERDOS506_QUICK_AUDIT=PASSED' ../../audit/QUICK.log
+          python3 verify_v102.py 2>&1 | tee ../../audit/V102.log
+          grep -F 'ERDOS506_V102_AUDIT=PASSED' ../../audit/V102.log
+          python3 verify_values.py 2>&1 | tee ../../audit/VALUES.log
+          grep -F 'ERDOS506_VALUE_ARITHMETIC=PASSED' ../../audit/VALUES.log
+
+      - name: Syntax, path-safety, and offline-backend audit
+        run: |
+          set -euo pipefail
+          cd clean/Erdos506
+          python3 - <<'PY' | tee ../../audit/STATIC_AUDIT.log
+          from pathlib import Path
+          import py_compile, re, stat, subprocess, sys, tempfile, zipfile
+          from pathlib import PurePosixPath
+          root=Path('.')
+          for zp in root.rglob('*.zip'):
+              with zipfile.ZipFile(zp) as z:
+                  seen=set()
+                  for i in z.infolist():
+                      p=PurePosixPath(i.filename); mode=(i.external_attr>>16)&0xffff
+                      assert not p.is_absolute() and '..' not in p.parts and '\\' not in i.filename
+                      assert i.filename not in seen and not stat.S_ISLNK(mode)
+                      seen.add(i.filename)
+                  assert z.testzip() is None
+          work=Path(tempfile.mkdtemp(prefix='e506-static-'))
+          with zipfile.ZipFile(root/'packages/base.zip') as z:z.extractall(work)
+          master=next(work.glob('Erdos506_MASTER_BY_N_*'))
+          shells=list(master.rglob('*.sh'))
+          for p in shells:
+              subprocess.run(['bash','-n',str(p)],check=True)
+          pys=[p for p in master.rglob('*.py') if 'node_modules' not in p.parts]
+          for p in pys:py_compile.compile(str(p),doraise=True)
+          n14=master/'n=14/01_COMPLETE_WORKING_PACKAGE/run_extended_final_n14.sh'
+          text=n14.read_text()
+          assert 'crosscheck_erdos506_n14_102700_all_286.py /tmp/e506_102700_all 60' in text
+          assert not re.search(r'crosscheck_erdos506_n14_102700_all_286\.py\s*$',text,re.M)
+          n10=master/'n=10/01_COMPLETE_WORKING_PACKAGE'
+          active=[]
+          for p in list(n10.rglob('*.sh'))+list(n10.rglob('*.py')):
+              if 'node_modules' in p.parts:continue
+              s=p.read_text(errors='ignore')
+              if re.search(r'(^|[;&|]\s*)(curl|wget|npm\s+install|pip\s+install)\b',s,re.M):active.append(str(p))
+          assert not active,active
+          idx=(n10/'sat_env/node_modules/cadical-wasm/dist/index.js').resolve()
+          subprocess.run(['node','-e',"import(process.argv[1]).then(()=>console.log('VENDOR_IMPORT=PASSED'))",str(idx)],check=True)
+          print(f'SHELL_FILES={len(shells)}')
+          print(f'PYTHON_FILES={len(pys)}')
+          print('STATIC_AND_OFFLINE_AUDIT=PASSED')
+          PY
+          grep -F 'STATIC_AND_OFFLINE_AUDIT=PASSED' ../../audit/STATIC_AUDIT.log
+
+      - name: Full canonical package replay
+        run: |
+          set -euo pipefail
+          cd clean/Erdos506
+          /usr/bin/time -v python3 verify.py --full \
+            > ../../audit/FULL.log 2> ../../audit/FULL.time
+          grep -F 'ERDOS506_FULL_REPLAY=PASSED' ../../audit/FULL.log
+          if grep -E '\b(timeouts?|timed)[=:][[:space:]]*[1-9][0-9]*' ../../audit/FULL.log; then
+            echo 'positive timeout found in full replay' >&2
+            exit 1
+          fi
+
+      - name: Fresh complete n=9, n=10 AA/AB, and extended n=14 replay
+        run: |
+          set -euo pipefail
+          cd clean/Erdos506
+          /usr/bin/time -v python3 verify_fresh_critical.py \
+            > ../../audit/FRESH_CRITICAL.log 2> ../../audit/FRESH_CRITICAL.time
+          grep -F 'ERDOS506_FRESH_CRITICAL_REPLAY=PASSED' ../../audit/FRESH_CRITICAL.log
+          grep -F 'Erdos #506 n=9 independent proof audit: PASSED; f(9)=25' ../../audit/FRESH_CRITICAL.log
+          grep -F 'all 61 AA ordinary-pair branches are UNSAT' ../../audit/FRESH_CRITICAL.log
+          grep -F 'all 61 AB ordinary-pair branches are UNSAT' ../../audit/FRESH_CRITICAL.log
+          grep -F 'Erdos #506 n=10 full replay: PASSED; f(10)=33' ../../audit/FRESH_CRITICAL.log
+          grep -F 'Erdos #506 (10,27,0) all-286 labelled Pappus/Desargues cross-check: PASSED' ../../audit/FRESH_CRITICAL.log
+          grep -F '=== EXTENDED FINAL N14 AUDIT: PASSED ===' ../../audit/FRESH_CRITICAL.log
+          if grep -E '\b(timeouts?|timed)[=:][[:space:]]*[1-9][0-9]*' ../../audit/FRESH_CRITICAL.log; then
+            echo 'positive timeout found in fresh critical replay' >&2
+            exit 1
+          fi
+
+      - name: Fail-closed mutation tests
+        run: |
+          set -euo pipefail
+          cp -a clean/Erdos506 negative-outer
+          printf '\nCORRUPTION\n' >> negative-outer/README.md
+          if (cd negative-outer && python3 verify.py > ../audit/NEGATIVE_OUTER.log 2>&1); then
+            echo 'outer-manifest corruption was not rejected' >&2
+            exit 1
+          fi
+          cp -a clean/Erdos506 negative-package
+          printf X >> negative-package/packages/base.zip
+          if (cd negative-package && python3 verify.py > ../audit/NEGATIVE_PACKAGE.log 2>&1); then
+            echo 'package corruption was not rejected' >&2
+            exit 1
+          fi
+          cp -a clean/Erdos506 negative-missing
+          rm negative-missing/packages/n13/B82.zip
+          if (cd negative-missing && python3 verify.py > ../audit/NEGATIVE_MISSING.log 2>&1); then
+            echo 'missing proof package was not rejected' >&2
+            exit 1
+          fi
+          echo 'FAIL_CLOSED_MUTATION_TESTS=PASSED' | tee audit/NEGATIVE_STATUS.log
+
+      - name: Build release audit bundle and retrieve unchanged manuscript assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive_sha="$(sha256sum dist/Erdos506.zip | awk '{print $1}')"
+          cat > audit/RELEASE_AUDIT.md <<EOF
+          # Erdős 506 corrected archive v1.0.2 audit
+
+          Archive SHA-256: \`$archive_sha\`
+
+          Passed on GitHub-hosted Ubuntu 24.04:
+
+          - deterministic double build and byte comparison;
+          - ZIP CRC/path/symlink safety checks;
+          - every outer and nested checksum ledger through the package verifiers;
+          - canonical quick replay and value arithmetic;
+          - v1.0.2 correction/vendor structural verifier;
+          - shell and Python syntax audit;
+          - full canonical replay;
+          - fresh exact n=9 replay;
+          - fresh complete n=10 replay, including all 61 AA and all 61 AB CaDiCaL branches from the vendored offline backend;
+          - corrected extended n=14 replay, including 86 sigma=1 regenerations and all 286 labelled placements;
+          - three fail-closed mutation tests.
+
+          Final markers:
+
+          \`ERDOS506_QUICK_AUDIT=PASSED\`
+
+          \`ERDOS506_FULL_REPLAY=PASSED\`
+
+          \`ERDOS506_FRESH_CRITICAL_REPLAY=PASSED\`
+
+          \`ERDOS506_V102_AUDIT=PASSED\`
+          EOF
+          (cd audit && zip -9 -r ../dist/Erdos506_v1.0.2_AUDIT.zip .)
+          sha256sum dist/Erdos506_v1.0.2_AUDIT.zip > dist/Erdos506_v1.0.2_AUDIT.zip.sha256
+          mkdir -p paper-assets
+          source_tag=v1.0.1
+          if ! gh release view "$source_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then source_tag=v1.0.0; fi
+          for name in erdos506_preprint.pdf erdos506_computational_supplement.pdf arxiv-source.zip supplement-source.zip; do
+            gh release download "$source_tag" --repo "$GITHUB_REPOSITORY" --pattern "$name" --dir paper-assets
+          done
+
+      - name: Publish immutable corrected release v1.0.2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp dist/Erdos506.zip.sha256 dist/Erdos506.zip.sha256.tmp 2>/dev/null || true
+          sha256sum dist/Erdos506.zip | sed 's#  dist/#  #' > dist/Erdos506.zip.sha256
+          cat > release-notes.md <<'EOF'
+          ## Corrected, fully replayed proof archive
+
+          This release supersedes the proof archive in v1.0.0/v1.0.1 while preserving those releases as historical records.
+
+          Corrections:
+
+          1. the n=14 extended runner now supplies the required arguments to the all-286 labelled-placement verifier;
+          2. the pinned `cadical-wasm@0.1.2` backend is vendored inside the n=10 package, so all 61 AA and 61 AB SAT branches replay offline.
+
+          No mathematical statement or finite proof input changed.
+
+          The release was published only after deterministic rebuild, quick and full canonical replay, fresh n=9, complete n=10 AA/AB, corrected extended n=14, syntax/security checks, and fail-closed mutation tests all passed. See `Erdos506_v1.0.2_AUDIT.zip`.
+          EOF
+          gh release create "$RELEASE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --title 'Erdős Problem 506 — corrected proof archive v1.0.2' \
+            --notes-file release-notes.md \
+            dist/Erdos506.zip \
+            dist/Erdos506.zip.sha256 \
+            dist/Erdos506_v1.0.2_AUDIT.zip \
+            dist/Erdos506_v1.0.2_AUDIT.zip.sha256 \
+            paper-assets/erdos506_preprint.pdf \
+            paper-assets/erdos506_computational_supplement.pdf \
+            paper-assets/arxiv-source.zip \
+            paper-assets/supplement-source.zip
+
+      - name: Report publication to the closure-audit issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "$JOB_STATUS" = success ]; then
+            digest="$(sha256sum dist/Erdos506.zip | awk '{print $1}')"
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Corrected archive v1.0.2 published after complete verification\n\nArchive SHA-256: \`$digest\`. Deterministic build, quick/full replay, fresh n=9, all 122 n=10 AA/AB SAT branches, corrected extended n=14 including all 286 placements, static checks, and fail-closed mutation tests passed. Release: https://github.com/$GITHUB_REPOSITORY/releases/tag/$RELEASE_TAG. Run: $run_url."
+          else
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Corrected archive v1.0.2 build or verification failed\n\nNo release was intentionally published. Inspect: $run_url."
+            exit 1
+          fi
