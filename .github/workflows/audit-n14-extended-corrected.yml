@@ -1,0 +1,88 @@
+name: audit-n14-extended-corrected-replay
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+    paths:
+      - .github/workflows/audit-n14-extended-corrected.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  RELEASE_TAG: v1.0.0
+  ARCHIVE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
+
+jobs:
+  n14-corrected:
+    name: Fresh corrected extended replay n=14
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download and verify canonical archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
+          unzip -q Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          root="$(find base -type d -name 'Erdos506_MASTER_BY_N_2026-08-20_v57_RECOVERY_CHECKPOINT' -print -quit)"
+          test -n "$root"
+          printf '%s\n' "$root" > archive-root.txt
+
+      - name: Correct the missing all-286 cross-check arguments in the extracted runner
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          runner="$root/n=14/01_COMPLETE_WORKING_PACKAGE/run_extended_final_n14.sh"
+          python3 - "$runner" <<'PY'
+          from pathlib import Path
+          import sys
+          p = Path(sys.argv[1])
+          text = p.read_text()
+          old = "python3 inherited_v36/new_move/crosscheck_erdos506_n14_102700_all_286.py\n"
+          new = "python3 inherited_v36/new_move/crosscheck_erdos506_n14_102700_all_286.py /tmp/e506_102700_all 60\n"
+          if old not in text:
+              raise SystemExit("expected unparameterized all-286 call not found")
+          p.write_text(text.replace(old, new, 1))
+          PY
+          grep -F 'crosscheck_erdos506_n14_102700_all_286.py /tmp/e506_102700_all 60' "$runner"
+
+      - name: Run corrected complete extended n=14 package from source
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          pkg="$root/n=14/01_COMPLETE_WORKING_PACKAGE"
+          /usr/bin/time -v bash "$pkg/run_extended_final_n14.sh" 2>&1 | tee n14-corrected-extended.log
+          grep -F '=== FAST FINAL N14 AUDIT: PASSED ===' n14-corrected-extended.log
+          grep -F 'sigma=1 86-job full regeneration: PASSED' n14-corrected-extended.log
+          grep -F 'Erdos #506 (10,27,0) all-286 labelled Pappus/Desargues cross-check: PASSED' n14-corrected-extended.log
+          grep -F '=== EXTENDED FINAL N14 AUDIT: PASSED ===' n14-corrected-extended.log
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n14-corrected-extended-replay-log
+          path: n14-corrected-extended.log
+
+      - name: Report result to closure audit issue
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          OUTCOME: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          run_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ "$OUTCOME" = success ]; then
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Corrected fresh extended n=14 replay passed\n\nCanonical release: \`$RELEASE_TAG\`; archive SHA-256: \`$ARCHIVE_SHA256\`. The fast audit, 86 sigma=1 regenerations, slow B=96 classifications, all 286 labelled (10,27,0) placements, and final extended marker all passed. Therefore the fresh computational replay confirms \`f(14)=73\`. Run: $run_url. Commit: \`$GITHUB_SHA\`."
+          else
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Corrected fresh extended n=14 replay failed or is incomplete\n\nInspect the job log and artifact at $run_url. Commit: \`$GITHUB_SHA\`."
+            exit 1
+          fi
