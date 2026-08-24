@@ -1,53 +1,27 @@
-# GitHub Release `v1.0.0` — final publication step
+# GitHub Release `v1.0.0` — completed checklist
 
-A private draft release has already been created automatically. Four source-derived assets have been compiled, page-checked, made reproducible where applicable, and uploaded by GitHub Actions:
+Release `v1.0.0` has been published successfully.
 
-```text
-erdos506_preprint.pdf
-erdos506_computational_supplement.pdf
-arxiv-source.zip
-supplement-source.zip
-```
+Completed:
 
-Their final SHA-256 values are recorded in `ASSET_SHA256SUMS.txt`.
+- [x] `Erdos506.zip` uploaded;
+- [x] `erdos506_preprint.pdf` uploaded;
+- [x] `erdos506_computational_supplement.pdf` uploaded;
+- [x] `arxiv-source.zip` uploaded;
+- [x] `supplement-source.zip` uploaded;
+- [x] every asset checked against `ASSET_SHA256SUMS.txt`;
+- [x] canonical archive unpacked from the release;
+- [x] quick proof audit ended with `ERDOS506_QUICK_AUDIT=PASSED`;
+- [x] release published as `v1.0.0`;
+- [x] publication issue #1 closed automatically;
+- [x] repository changed from Private to Public.
 
-## One remaining upload
-
-1. Open **Releases** in this repository.
-2. Open the existing draft release `v1.0.0`.
-3. Edit the draft.
-4. Upload only:
-
-```text
-Erdos506.zip
-```
-
-Expected SHA-256:
+Canonical archive SHA-256:
 
 ```text
 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
 ```
 
-Do not publish the release manually yet.
+For future substantive corrections, create a new release version and record new checksums rather than modifying the canonical `v1.0.0` proof object.
 
-## Automated verification and publication
-
-After the upload:
-
-1. Open **Actions**.
-2. Select **finalize-release-v1**.
-3. Select **Run workflow** on branch `main`.
-
-The workflow will:
-
-- download all five release assets;
-- verify every SHA-256 against `ASSET_SHA256SUMS.txt`;
-- unpack `Erdos506.zip`;
-- run the canonical quick proof audit;
-- require `ERDOS506_QUICK_AUDIT=PASSED`;
-- publish release `v1.0.0` only after all checks pass;
-- close issue #1 as completed.
-
-After that workflow succeeds, change repository visibility from **Private** to **Public**.
-
-The separate **full-verification-manual** workflow performs the full computational replay and may take several hours.
+The complete computational replay remains available through the manual workflow `full-verification-manual` and may take several hours.
