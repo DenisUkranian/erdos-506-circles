@@ -10,6 +10,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: audit-n9-n10-n14-${{ github.ref }}
@@ -77,7 +78,8 @@ jobs:
           root="$(cat archive-root.txt)"
           pkg="$root/n=10/01_COMPLETE_WORKING_PACKAGE"
           npm install --prefix "$pkg/sat_env" --no-audit --no-fund --ignore-scripts cadical-wasm@0.1.2
-          node -e "import('$pkg/sat_env/node_modules/cadical-wasm/dist/index.js').then(()=>console.log('cadical-wasm@0.1.2 import: PASSED'))"
+          module="$(realpath "$pkg/sat_env/node_modules/cadical-wasm/dist/index.js")"
+          node -e "import(process.argv[1]).then(()=>console.log('cadical-wasm@0.1.2 import: PASSED'))" "$module"
       - name: Run the complete n=10 proof package from source
         run: |
           set -euo pipefail
@@ -125,3 +127,25 @@ jobs:
         with:
           name: n14-fresh-extended-replay-log
           path: n14-fresh-extended.log
+
+  report:
+    name: Report aggregate replay result
+    if: always()
+    needs: [n9, n10, n14]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Post status to closure audit issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          N9: ${{ needs.n9.result }}
+          N10: ${{ needs.n10.result }}
+          N14: ${{ needs.n14.result }}
+        run: |
+          set -euo pipefail
+          summary="n9=$N9 n10=$N10 n14=$N14"
+          if [ "$N9" = success ] && [ "$N10" = success ] && [ "$N14" = success ]; then
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replays passed\n\nCanonical release: \`v1.0.1\`. Archive SHA-256: \`$ARCHIVE_SHA256\`.\n\n- n=9 complete exact replay: PASS, \`f(9)=25\`;\n- n=10 dependency-free core plus all 61 AA and all 61 AB CaDiCaL branches: PASS, \`f(10)=33\`;\n- n=14 fast audit plus extended 86-job / slow-classification / 286-placement regeneration: PASS, \`f(14)=73\`.\n\nWorkflow outcomes: \`$summary\`. Logs are retained as workflow artifacts. Commit: \`$GITHUB_SHA\`."
+          else
+            gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Fresh n=9, n=10 and n=14 source replay failed or is incomplete\n\nWorkflow outcomes: \`$summary\`. Inspect the workflow jobs and retained artifacts before relying on these three cases. Commit: \`$GITHUB_SHA\`."
+            exit 1
+          fi
