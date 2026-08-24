@@ -1,0 +1,111 @@
+name: update-main-metadata-after-v1.0.2
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+    paths:
+      - .github/workflows/update-main-after-v102.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  update-main:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm the corrected public release and read its immutable digest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v1.0.2 --repo "$GITHUB_REPOSITORY" >/dev/null
+          gh release download v1.0.2 --repo "$GITHUB_REPOSITORY" \
+            --pattern Erdos506.zip.sha256 --dir /tmp/v102
+          digest="$(awk '{print $1}' /tmp/v102/Erdos506.zip.sha256)"
+          test "${#digest}" = 64
+          echo "V102_DIGEST=$digest" >> "$GITHUB_ENV"
+
+      - name: Update the default branch publication metadata
+        run: |
+          set -euo pipefail
+          git checkout main
+          python3 - <<'PY'
+          from pathlib import Path
+          import json, os, re
+          digest=os.environ['V102_DIGEST']
+          release='https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2'
+
+          readme=Path('README.md')
+          s=readme.read_text()
+          s=re.sub(r'https://github\.com/DenisUkranian/erdos-506-circles/releases/tag/v1\.0\.[01]',release,s)
+          marker='## Current corrected release'
+          block=f'''\n\n{marker}\n\nThe current canonical proof archive is release [v1.0.2]({release}). It fixes the n=14 extended-runner argument list and includes a checksummed offline `cadical-wasm@0.1.2` backend for the complete n=10 AA/AB replay.\n\n```text\nSHA-256: {digest}\n```\n\nBoth earlier releases remain available as historical records and should not be used as the current reproducibility target.\n'''
+          if marker in s:
+              s=s[:s.index(marker)].rstrip()+block
+          else:
+              s=s.rstrip()+block
+          readme.write_text(s)
+
+          status=Path('PUBLICATION_STATUS.md')
+          status.write_text(f'''# Publication status\n\n- Public repository: active.\n- Current corrected release: `v1.0.2`.\n- Canonical proof archive SHA-256: `{digest}`.\n- Canonical quick replay: passed.\n- Canonical full replay: passed.\n- Fresh complete n=9 replay: passed.\n- Fresh complete n=10 replay, including all 61 AA and 61 AB SAT branches: passed.\n- Corrected extended n=14 replay, including all 286 labelled placements: passed.\n- Release audit bundle: published alongside `Erdos506.zip`.\n- arXiv identifier: pending submission.\n- Zenodo DOI: pending archival deposit.\n\nRelease: {release}\n''')
+
+          cff=Path('CITATION.cff')
+          if cff.exists():
+              t=cff.read_text()
+              t=re.sub(r'^version:\s*.*$', 'version: 1.0.2', t, flags=re.M)
+              t=re.sub(r'^date-released:\s*.*$', 'date-released: 2026-08-24', t, flags=re.M)
+              if 'url:' not in t:
+                  t += f'url: "{release}"\n'
+              cff.write_text(t)
+
+          cm=Path('codemeta.json')
+          if cm.exists():
+              data=json.loads(cm.read_text())
+              data['version']='1.0.2'
+              data['datePublished']='2026-08-24'
+              data['downloadUrl']=release
+              cm.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+
+          zen=Path('.zenodo.json')
+          if zen.exists():
+              data=json.loads(zen.read_text())
+              data['version']='1.0.2'
+              data['publication_date']='2026-08-24'
+              data['related_identifiers']=[{'identifier':release,'relation':'isSupplementTo','scheme':'url'}]
+              zen.write_text(json.dumps(data,indent=2,ensure_ascii=False)+'\n')
+
+          changelog=Path('CHANGELOG.md')
+          entry=f'''## 1.0.2 — 2026-08-24\n\n- Corrected the missing arguments in the n=14 all-286 extended replay call.\n- Vendored and checksummed `cadical-wasm@0.1.2` for an offline complete n=10 AA/AB replay.\n- Rebuilt deterministically and passed quick, full, fresh n=9/n=10/n=14, static, path-safety, and fail-closed mutation audits.\n- Canonical archive SHA-256: `{digest}`.\n\n'''
+          old=changelog.read_text() if changelog.exists() else '# Changelog\n\n'
+          if '## 1.0.2' not in old:
+              if old.startswith('# Changelog'):
+                  old='# Changelog\n\n'+entry+old[len('# Changelog'):].lstrip('\n')
+              else:
+                  old=entry+old
+          changelog.write_text(old)
+
+          audit=Path('FINAL_RELEASE_AUDIT.md')
+          audit.write_text(f'''# Final release audit\n\nCurrent release: `v1.0.2`\n\nCanonical archive SHA-256: `{digest}`\n\nThe public release contains a separate audit bundle recording deterministic double-build identity, ZIP/path safety, checksum verification, canonical quick and full replay, fresh n=9, complete n=10 AA/AB, corrected extended n=14, syntax/offline checks, and fail-closed mutation tests.\n\nRelease: {release}\n''')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add README.md PUBLICATION_STATUS.md CITATION.cff codemeta.json .zenodo.json CHANGELOG.md FINAL_RELEASE_AUDIT.md
+          if git diff --cached --quiet; then
+            echo 'No metadata changes required.'
+          else
+            git commit -m 'Point publication metadata to corrected v1.0.2 archive'
+            git push origin main
+          fi
+
+      - name: Report completion
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "### Main branch metadata updated for v1.0.2\n\nREADME, publication status, citation metadata, CodeMeta, Zenodo metadata, changelog, and final audit now point to the corrected release and canonical digest \`$V102_DIGEST\`."
