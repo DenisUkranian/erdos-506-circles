@@ -1,0 +1,1 @@
+Run the two-solver n=10 SAT audit against canonical release v1.0.0.
