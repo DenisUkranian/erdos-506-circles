@@ -1,0 +1,168 @@
+name: audit-independent-lean-closure
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  lean-audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - name: Check out this audit branch
+        uses: actions/checkout@v4
+
+      - name: Check out the independent Lean review package at a pinned commit
+        uses: actions/checkout@v4
+        with:
+          repository: rafalwronapl/erdos506-review-package-2026-08-16
+          ref: f647646e77e48c10cf7928d5203214b520537506
+          path: external-lean
+
+      - name: Announce audit start
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 3 --body "### Independent Lean cross-check started\n\nGitHub Actions is rebuilding pinned commit `f647646e77e48c10cf7928d5203214b520537506` of `rafalwronapl/erdos506-review-package-2026-08-16`, running the canonical theorem builds, source-hygiene checks, and `AxiomsAudit.lean`."
+
+      - name: Install Lean toolchain manager and utilities
+        id: install
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y curl git ripgrep
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Record pinned source identity and verify payload checksums
+        id: identity
+        if: steps.install.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean
+        run: |
+          set -euo pipefail
+          git rev-parse HEAD | tee /tmp/external-lean-commit.txt
+          test "$(git rev-parse HEAD)" = "f647646e77e48c10cf7928d5203214b520537506"
+          sha256sum -c CHECKSUMS.sha256 | tee /tmp/external-lean-checksums.log
+
+      - name: Source hygiene audit
+        id: hygiene
+        if: steps.identity.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean
+        run: |
+          set -euo pipefail
+          if rg -n --glob '*.lean' '\bsorry\b|\badmit\b' formalization/Erdos506 formalization/Erdos506.lean; then
+            echo 'Unexpected sorry/admit token in public theorem source' >&2
+            exit 1
+          fi
+          if rg -n --glob '*.lean' '^\s*(axiom|unsafe)\b' formalization/Erdos506 formalization/Erdos506.lean; then
+            echo 'Unexpected project-local axiom/unsafe declaration in public theorem source' >&2
+            exit 1
+          fi
+          echo SOURCE_HYGIENE=PASSED | tee /tmp/external-lean-hygiene.log
+
+      - name: Fetch pinned Lean dependencies and mathlib cache
+        id: deps
+        if: steps.hygiene.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean/formalization
+        run: |
+          set -euo pipefail
+          lean --version | tee /tmp/external-lean-version.log
+          lake update
+          lake exe cache get
+
+      - name: Build the canonical lower bound and sharpness targets
+        id: build
+        if: steps.deps.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean/formalization
+        run: |
+          set -euo pipefail
+          {
+            lake -Kjobs=1 build Erdos506.V1.Main
+            lake -Kjobs=1 build Erdos506.V1.Sharpness
+            lake -Kjobs=1 build Erdos506.Canonical
+            lake -Kjobs=1 build Erdos506
+          } 2>&1 | tee /tmp/external-lean-build.log
+
+      - name: Run strict public axiom audit
+        id: axioms
+        if: steps.build.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean/formalization
+        run: |
+          set -euo pipefail
+          lake env lean -DwarningAsError=true AxiomsAudit.lean 2>&1 | tee /tmp/external-lean-axioms.log
+          ! grep -E '^.* depends on axioms:.*(sorryAx|Classical\.choice.*sorry|propext.*sorry)' /tmp/external-lean-axioms.log
+          echo AXIOMS_AUDIT=PASSED
+
+      - name: Verify canonical theorem signatures
+        id: theorem
+        if: steps.axioms.outcome == 'success'
+        continue-on-error: true
+        working-directory: external-lean/formalization
+        run: |
+          set -euo pipefail
+          cat > /tmp/CheckErdos506.lean <<'EOF'
+          import Erdos506
+          #check Erdos506.V1.circleCount_ge_v1Target
+          #check Erdos506.V1.exists_v1_extremizer
+          #check Erdos506.erdos_506
+          #reduce Erdos506.V1.v1Target 4
+          #reduce Erdos506.V1.v1Target 5
+          #reduce Erdos506.V1.v1Target 6
+          #reduce Erdos506.V1.v1Target 7
+          #reduce Erdos506.V1.v1Target 8
+          #reduce Erdos506.V1.v1Target 9
+          EOF
+          lake env lean /tmp/CheckErdos506.lean 2>&1 | tee /tmp/external-lean-theorem.log
+
+      - name: Collect audit logs
+        if: always()
+        run: |
+          mkdir -p lean-audit-logs
+          cp /tmp/external-lean-*.log lean-audit-logs/ 2>/dev/null || true
+          cp /tmp/external-lean-commit.txt lean-audit-logs/ 2>/dev/null || true
+          printf 'install=%s\nidentity=%s\nhygiene=%s\ndeps=%s\nbuild=%s\naxioms=%s\ntheorem=%s\n' \
+            '${{ steps.install.outcome }}' '${{ steps.identity.outcome }}' '${{ steps.hygiene.outcome }}' \
+            '${{ steps.deps.outcome }}' '${{ steps.build.outcome }}' '${{ steps.axioms.outcome }}' \
+            '${{ steps.theorem.outcome }}' > lean-audit-logs/step-outcomes.txt
+
+      - name: Upload audit logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-lean-closure-audit
+          path: lean-audit-logs
+
+      - name: Report audit result
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INSTALL: ${{ steps.install.outcome }}
+          IDENTITY: ${{ steps.identity.outcome }}
+          HYGIENE: ${{ steps.hygiene.outcome }}
+          DEPS: ${{ steps.deps.outcome }}
+          BUILD: ${{ steps.build.outcome }}
+          AXIOMS: ${{ steps.axioms.outcome }}
+          THEOREM: ${{ steps.theorem.outcome }}
+        run: |
+          set -euo pipefail
+          summary="install=$INSTALL identity=$IDENTITY hygiene=$HYGIENE deps=$DEPS build=$BUILD axioms=$AXIOMS theorem=$THEOREM"
+          if [ "$INSTALL" = success ] && [ "$IDENTITY" = success ] && [ "$HYGIENE" = success ] && [ "$DEPS" = success ] && [ "$BUILD" = success ] && [ "$AXIOMS" = success ] && [ "$THEOREM" = success ]; then
+            theorem_output="$(tail -30 /tmp/external-lean-theorem.log)"
+            gh issue comment 3 --body "### Independent Lean cross-check passed\n\nPinned commit: `f647646e77e48c10cf7928d5203214b520537506`.\n\nAll payload checksums, source-hygiene checks, four Lean builds, strict axiom audit, and canonical theorem signature checks passed.\n\n\`\`\`text\n${theorem_output}\n\`\`\`\n\nWorkflow outcomes: `${summary}`. The full logs are retained as the `independent-lean-closure-audit` artifact."
+            echo INDEPENDENT_LEAN_CLOSURE_AUDIT=PASSED
+          else
+            gh issue comment 3 --body "### Independent Lean cross-check failed or was incomplete\n\nWorkflow outcomes: `${summary}`. Inspect the `independent-lean-closure-audit` artifact and failed step before relying on the separate formalization."
+            exit 1
+          fi
