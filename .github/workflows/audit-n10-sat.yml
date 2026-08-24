@@ -1,0 +1,157 @@
+name: audit-n10-sat-two-solvers
+
+on:
+  push:
+    branches:
+      - audit/full-closure-v1.0.1
+    paths:
+      - .github/workflows/audit-n10-sat.yml
+      - .github/n10-audit-trigger.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  audit-n10:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install independent SAT backends
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y cadical nodejs npm unzip
+          node --version
+          npm --version
+          cadical --version
+
+      - name: Download and verify canonical v1.0.0 proof archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/erdos506-release /tmp/erdos506-proof
+          gh release download v1.0.0 --pattern Erdos506.zip --dir /tmp/erdos506-release
+          echo '528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3  /tmp/erdos506-release/Erdos506.zip' | sha256sum -c -
+          unzip -q /tmp/erdos506-release/Erdos506.zip -d /tmp/erdos506-proof
+          unzip -q /tmp/erdos506-proof/Erdos506/packages/base.zip -d /tmp/erdos506-base
+          N10='/tmp/erdos506-base/Erdos506_MASTER_BY_N_2026-08-20_v57_RECOVERY_CHECKPOINT/n=10/01_COMPLETE_WORKING_PACKAGE'
+          test -d "$N10"
+          echo "N10=$N10" >> "$GITHUB_ENV"
+
+      - name: Run dependency-free n=10 core
+        run: |
+          set -euo pipefail
+          cd "$N10"
+          bash run_dependency_free_core.sh | tee "$GITHUB_WORKSPACE/n10-dependency-free.log"
+
+      - name: Install pinned original CaDiCaL-WASM backend
+        run: |
+          set -euo pipefail
+          cd "$N10"
+          npm install --prefix sat_env --no-audit --no-fund cadical-wasm@0.1.2
+          test -f sat_env/node_modules/cadical-wasm/dist/index.js
+          npm list --prefix sat_env cadical-wasm | tee "$GITHUB_WORKSPACE/npm-dependency-tree.txt"
+
+      - name: Regenerate and solve all 61 AA branches with CaDiCaL-WASM
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/n10-cnf/AA"
+          cd "$N10"
+          python3 verify_erdos506_n10_max5_circle_AA_exact.py \
+            --jobs 3 \
+            --keep-dir "$GITHUB_WORKSPACE/n10-cnf/AA" \
+            | tee "$GITHUB_WORKSPACE/n10-AA-cadical-wasm.log"
+          test "$(find "$GITHUB_WORKSPACE/n10-cnf/AA" -name '*.cnf' | wc -l)" -eq 61
+          grep -F 'all 61 AA ordinary-pair branches are UNSAT' "$GITHUB_WORKSPACE/n10-AA-cadical-wasm.log"
+
+      - name: Regenerate and solve all 61 AB branches with CaDiCaL-WASM
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/n10-cnf/AB"
+          cd "$N10"
+          python3 verify_erdos506_n10_max5_circle_AB_exact.py \
+            --jobs 3 \
+            --keep-dir "$GITHUB_WORKSPACE/n10-cnf/AB" \
+            | tee "$GITHUB_WORKSPACE/n10-AB-cadical-wasm.log"
+          test "$(find "$GITHUB_WORKSPACE/n10-cnf/AB" -name '*.cnf' | wc -l)" -eq 61
+          grep -F 'all 61 AB ordinary-pair branches are UNSAT' "$GITHUB_WORKSPACE/n10-AB-cadical-wasm.log"
+
+      - name: Independently solve all 122 regenerated CNFs with native CaDiCaL
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$GITHUB_WORKSPACE/native-logs"
+          solve_one() {
+            local cnf="$1"
+            local rel="${cnf#${GITHUB_WORKSPACE}/n10-cnf/}"
+            local safe="${rel//\//__}"
+            local log="$GITHUB_WORKSPACE/native-logs/${safe%.cnf}.log"
+            set +e
+            cadical "$cnf" >"$log" 2>&1
+            local rc=$?
+            set -e
+            if [ "$rc" -ne 20 ] || ! grep -q '^s UNSATISFIABLE' "$log"; then
+              echo "FAILED native CaDiCaL: $rel rc=$rc"
+              tail -100 "$log"
+              return 1
+            fi
+            echo "UNSAT $rel"
+          }
+          export -f solve_one
+          export GITHUB_WORKSPACE
+          find "$GITHUB_WORKSPACE/n10-cnf" -name '*.cnf' -print0 \
+            | sort -z \
+            | xargs -0 -n1 -P3 bash -c 'solve_one "$1"' _ \
+            | tee "$GITHUB_WORKSPACE/n10-native-cadical-summary.log"
+          test "$(grep -c '^UNSAT ' "$GITHUB_WORKSPACE/n10-native-cadical-summary.log")" -eq 122
+
+      - name: Record exact regenerated input and output hashes
+        run: |
+          set -euo pipefail
+          (cd "$GITHUB_WORKSPACE" && find n10-cnf -name '*.cnf' -print0 | sort -z | xargs -0 sha256sum) > n10-cnf-SHA256SUMS.txt
+          (cd "$GITHUB_WORKSPACE" && find native-logs -name '*.log' -print0 | sort -z | xargs -0 sha256sum) > n10-native-log-SHA256SUMS.txt
+          {
+            echo 'N10_SAT_AUDIT=PASSED'
+            echo 'AA_BRANCHES=61'
+            echo 'AB_BRANCHES=61'
+            echo 'TOTAL_BRANCHES=122'
+            echo 'ORIGINAL_BACKEND=cadical-wasm@0.1.2'
+            echo "INDEPENDENT_BACKEND=$(cadical --version | head -1)"
+            sha256sum n10-dependency-free.log n10-AA-cadical-wasm.log n10-AB-cadical-wasm.log n10-native-cadical-summary.log npm-dependency-tree.txt
+          } | tee n10-sat-audit-summary.txt
+
+      - name: Upload retained n=10 audit artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: n10-two-solver-audit
+          path: |
+            n10-sat-audit-summary.txt
+            n10-dependency-free.log
+            n10-AA-cadical-wasm.log
+            n10-AB-cadical-wasm.log
+            n10-native-cadical-summary.log
+            npm-dependency-tree.txt
+            n10-cnf-SHA256SUMS.txt
+            n10-native-log-SHA256SUMS.txt
+            native-logs/
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Report success to issue 2
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 2 --body "### n=10 two-solver audit passed\n\nThe dependency-free core passed. All 61 AA and 61 AB branches were regenerated and proved UNSAT by the pinned original backend \`cadical-wasm@0.1.2\`, then independently proved UNSAT by native CaDiCaL. The workflow retained branch logs and SHA-256 manifests as the \`n10-two-solver-audit\` artifact.\n\nFinal marker: \`N10_SAT_AUDIT=PASSED\`."
+
+      - name: Report failure to issue 2
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment 2 --body "### n=10 two-solver audit failed\n\nInspect the latest \`audit-n10-sat-two-solvers\` workflow run. The n=10 gap remains open until every one of the 122 branches is regenerated and returns UNSAT under both backends."
