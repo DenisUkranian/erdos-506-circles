@@ -1,0 +1,127 @@
+name: audit-n9-n10-n14-fresh-replay
+
+on:
+  push:
+    branches:
+      - audit/full-closure-2026-08-24
+    paths:
+      - .github/workflows/audit-n9-n10-n14.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: audit-n9-n10-n14-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  ARCHIVE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
+
+jobs:
+  n9:
+    name: Fresh exact replay n=9
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify canonical archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
+          unzip -q Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          root="$(find base -type d -name 'Erdos506_MASTER_BY_N_2026-08-20_v57_RECOVERY_CHECKPOINT' -print -quit)"
+          test -n "$root"
+          printf '%s\n' "$root" > archive-root.txt
+      - name: Run the complete n=9 proof package from source
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          pkg="$root/n=9/01_COMPLETE_WORKING_PACKAGE"
+          /usr/bin/time -v bash "$pkg/run_independent_proof.sh" 2>&1 | tee n9-fresh.log
+          grep -F 'Erdos #506 n=9 independent proof audit: PASSED; f(9)=25' n9-fresh.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n9-fresh-replay-log
+          path: n9-fresh.log
+
+  n10:
+    name: Fresh full replay n=10 including AA/AB SAT sweeps
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Download and verify canonical archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
+          unzip -q Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          root="$(find base -type d -name 'Erdos506_MASTER_BY_N_2026-08-20_v57_RECOVERY_CHECKPOINT' -print -quit)"
+          test -n "$root"
+          printf '%s\n' "$root" > archive-root.txt
+      - name: Install the pinned external SAT backend
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          pkg="$root/n=10/01_COMPLETE_WORKING_PACKAGE"
+          npm install --prefix "$pkg/sat_env" --no-audit --no-fund --ignore-scripts cadical-wasm@0.1.2
+          node -e "import('$pkg/sat_env/node_modules/cadical-wasm/dist/index.js').then(()=>console.log('cadical-wasm@0.1.2 import: PASSED'))"
+      - name: Run the complete n=10 proof package from source
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          pkg="$root/n=10/01_COMPLETE_WORKING_PACKAGE"
+          /usr/bin/time -v bash "$pkg/run_independent_proof.sh" 2>&1 | tee n10-fresh.log
+          grep -F 'all 61 AA ordinary-pair branches are UNSAT' n10-fresh.log
+          grep -F 'all 61 AB ordinary-pair branches are UNSAT' n10-fresh.log
+          grep -F 'Erdos #506 n=10 full replay: PASSED; f(10)=33' n10-fresh.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n10-fresh-full-replay-log
+          path: n10-fresh.log
+
+  n14:
+    name: Fresh fast and extended replay n=14
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download and verify canonical archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release download v1.0.1 --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip
+          echo "$ARCHIVE_SHA256  Erdos506.zip" | sha256sum -c -
+          unzip -q Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          root="$(find base -type d -name 'Erdos506_MASTER_BY_N_2026-08-20_v57_RECOVERY_CHECKPOINT' -print -quit)"
+          test -n "$root"
+          printf '%s\n' "$root" > archive-root.txt
+      - name: Run the extended n=14 package from source
+        run: |
+          set -euo pipefail
+          root="$(cat archive-root.txt)"
+          pkg="$root/n=14/01_COMPLETE_WORKING_PACKAGE"
+          /usr/bin/time -v bash "$pkg/run_extended_final_n14.sh" 2>&1 | tee n14-fresh-extended.log
+          grep -F '=== FAST FINAL N14 AUDIT: PASSED ===' n14-fresh-extended.log
+          grep -F 'sigma=1 86-job full regeneration: PASSED' n14-fresh-extended.log
+          grep -F '=== EXTENDED FINAL N14 AUDIT: PASSED ===' n14-fresh-extended.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: n14-fresh-extended-replay-log
+          path: n14-fresh-extended.log
