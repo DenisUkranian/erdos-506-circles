@@ -27,7 +27,7 @@ jobs:
       SOURCE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
       VENDOR_RUN_ID: "32760966595"
       VENDOR_SHA256: e5fb041f3b1226d6a60c25de18583ce46ebcbe69f0eea1cc0f25855694973b20
-      EXPECTED_V102_SHA256: cf8b63eca401ed33975d0bc52262b3e71d5dae07dd285730de5083600d7ef1f8
+      EXPECTED_V102_SHA256: d7c5b7146d4ae3c58c54e0dcb584477120907b694a40486191496e2014511b72
     steps:
       - name: Check out release branch
         uses: actions/checkout@v4
