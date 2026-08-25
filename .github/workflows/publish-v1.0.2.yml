@@ -15,7 +15,7 @@ permissions:
 
 concurrency:
   group: erdos506-publish-v1.0.2
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   publish:
@@ -28,6 +28,7 @@ jobs:
       VENDOR_RUN_ID: "32760966595"
       VENDOR_SHA256: e5fb041f3b1226d6a60c25de18583ce46ebcbe69f0eea1cc0f25855694973b20
       EXPECTED_V102_SHA256: d7c5b7146d4ae3c58c54e0dcb584477120907b694a40486191496e2014511b72
+
     steps:
       - name: Check out release branch
         uses: actions/checkout@v4
@@ -93,8 +94,11 @@ jobs:
             --build-dir build-v102 \
             --output-dir dist | tee logs/build.log
           echo "$EXPECTED_V102_SHA256  dist/Erdos506.zip" | sha256sum -c -
-          sha256sum dist/Erdos506.zip | tee logs/Erdos506.zip.sha256
-          cp logs/Erdos506.zip.sha256 dist/Erdos506.zip.sha256
+          (
+            cd dist
+            sha256sum Erdos506.zip > Erdos506.zip.sha256
+            sha256sum -c Erdos506.zip.sha256
+          )
 
       - name: Run quick and v1.0.2 structural audits
         run: |
@@ -156,18 +160,26 @@ jobs:
           mkdir audit-bundle
           cp logs/* audit-bundle/
           cp dist/Erdos506.zip.sha256 audit-bundle/
-          (cd audit-bundle && zip -q -9 -r ../dist/Erdos506_AUDIT_v1.0.2.zip .)
-          sha256sum dist/Erdos506_AUDIT_v1.0.2.zip > dist/Erdos506_AUDIT_v1.0.2.zip.sha256
-          sha256sum \
-            dist/Erdos506.zip \
-            dist/Erdos506.zip.sha256 \
-            dist/erdos506_preprint.pdf \
-            dist/erdos506_computational_supplement.pdf \
-            dist/arxiv-source.zip \
-            dist/supplement-source.zip \
-            dist/Erdos506_AUDIT_v1.0.2.zip \
-            dist/Erdos506_AUDIT_v1.0.2.zip.sha256 \
-            > dist/ASSET_SHA256SUMS.txt
+          (
+            cd audit-bundle
+            zip -q -9 -r ../dist/Erdos506_AUDIT_v1.0.2.zip .
+          )
+          (
+            cd dist
+            sha256sum Erdos506_AUDIT_v1.0.2.zip > Erdos506_AUDIT_v1.0.2.zip.sha256
+            sha256sum -c Erdos506_AUDIT_v1.0.2.zip.sha256
+            sha256sum \
+              Erdos506.zip \
+              Erdos506.zip.sha256 \
+              erdos506_preprint.pdf \
+              erdos506_computational_supplement.pdf \
+              arxiv-source.zip \
+              supplement-source.zip \
+              Erdos506_AUDIT_v1.0.2.zip \
+              Erdos506_AUDIT_v1.0.2.zip.sha256 \
+              > ASSET_SHA256SUMS.txt
+            sha256sum -c ASSET_SHA256SUMS.txt
+          )
           printf "%s\n" \
             "# Erdős Problem 506 — corrected proof archive v1.0.2" \
             "" \
@@ -190,6 +202,7 @@ jobs:
             --target "$GITHUB_SHA" \
             --title "Erdős Problem 506 — corrected proof archive v1.0.2" \
             --notes-file logs/RELEASE_NOTES.md \
+            --latest \
             dist/Erdos506.zip \
             dist/Erdos506.zip.sha256 \
             dist/erdos506_preprint.pdf \
@@ -205,7 +218,21 @@ jobs:
           set -euo pipefail
           mkdir public-download
           gh release download v1.0.2 --repo "$GITHUB_REPOSITORY" --dir public-download
-          echo "$EXPECTED_V102_SHA256  public-download/Erdos506.zip" | sha256sum -c -
-          (cd public-download && sha256sum -c ASSET_SHA256SUMS.txt)
-          unzip -t public-download/Erdos506.zip >/dev/null
+          (
+            cd public-download
+            sha256sum -c Erdos506.zip.sha256
+            sha256sum -c Erdos506_AUDIT_v1.0.2.zip.sha256
+            sha256sum -c ASSET_SHA256SUMS.txt
+            unzip -t Erdos506.zip >/dev/null
+          )
           echo "PUBLIC_RELEASE_V1_0_2_AUDIT=PASSED"
+
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: erdos506-v1.0.2-publication-diagnostics
+          path: |
+            logs
+            dist
+          if-no-files-found: ignore
