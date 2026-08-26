@@ -1,0 +1,355 @@
+name: Audit complete frozen project v1.0.0
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/audit-full-project-frozen-v100.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  GH_TOKEN: ${{ github.token }}
+  SOURCE_TAG: v1.0.0
+  SOURCE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
+  SAT_VENDOR_RUN_ID: "32760966595"
+  SAT_VENDOR_SHA256: e5fb041f3b1226d6a60c25de18583ce46ebcbe69f0eea1cc0f25855694973b20
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  integrity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download frozen archive and verify integrity
+        run: |
+          set -euo pipefail
+          mkdir -p audit outer logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          cd outer/Erdos506
+          python3 verify.py | tee "$GITHUB_WORKSPACE/logs/quick.log"
+          grep -F 'ERDOS506_QUICK_AUDIT=PASSED' "$GITHUB_WORKSPACE/logs/quick.log"
+          python3 - <<'PY' | tee "$GITHUB_WORKSPACE/logs/zip-safety.log"
+          from pathlib import Path
+          import stat, zipfile
+          root=Path('.')
+          zips=[root/'packages/base.zip',root/'packages/n12.zip',*sorted((root/'packages/n13').glob('*.zip'))]
+          for p in zips:
+              with zipfile.ZipFile(p) as z:
+                  names=z.namelist()
+                  assert len(names)==len(set(names)),p
+                  assert z.testzip() is None,p
+                  for info in z.infolist():
+                      q=Path(info.filename)
+                      assert not q.is_absolute() and '..' not in q.parts,(p,info.filename)
+                      mode=(info.external_attr>>16)&0xffff
+                      assert not stat.S_ISLNK(mode),(p,info.filename)
+          print(f'ZIP_SAFETY_AUDIT=PASSED packages={len(zips)}')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-integrity-v100
+          path: logs
+
+  n8_n11:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install tools and pinned symbolic dependency
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y unzip time g++
+          python3 -m pip install --disable-pip-version-check --no-cache-dir 'sympy==1.14.0' 'mpmath==1.3.0'
+      - name: Extract frozen base package and pinned SAT backend
+        run: |
+          set -euo pipefail
+          mkdir -p audit outer base vendor logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          BASE="$(find base -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$BASE"
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+          gh run download "$SAT_VENDOR_RUN_ID" --repo "$GITHUB_REPOSITORY" --name cadical-wasm-0.1.2-vendor --dir vendor
+          echo "$SAT_VENDOR_SHA256  vendor/cadical-wasm-0.1.2-vendor.tar.gz" | sha256sum -c -
+          N10="$BASE/n=10/01_COMPLETE_WORKING_PACKAGE"
+          tar -xzf vendor/cadical-wasm-0.1.2-vendor.tar.gz -C "$N10"
+          (cd "$N10" && sha256sum -c SAT_VENDOR_MANIFEST.sha256)
+      - name: Fresh replay n=8 through n=11
+        run: |
+          set -euo pipefail
+          {
+            cd "$BASE/n=8/01_COMPLETE_WORKING_PACKAGE"
+            python3 erdos506_f8_17_verify.py
+          } | tee logs/n8.log
+          grep -F 'EXACT CHECK PASSED' logs/n8.log
+          {
+            cd "$BASE/n=9/01_COMPLETE_WORKING_PACKAGE"
+            /usr/bin/time -v bash run_independent_proof.sh
+          } 2>&1 | tee logs/n9.log
+          grep -F 'Erdos #506 n=9 independent proof audit: PASSED; f(9)=25' logs/n9.log
+          {
+            cd "$BASE/n=10/01_COMPLETE_WORKING_PACKAGE"
+            /usr/bin/time -v bash run_independent_proof.sh
+          } 2>&1 | tee logs/n10.log
+          grep -F 'all 61 AA ordinary-pair branches are UNSAT' logs/n10.log
+          grep -F 'all 61 AB ordinary-pair branches are UNSAT' logs/n10.log
+          grep -F 'Erdos #506 n=10 full replay: PASSED; f(10)=33' logs/n10.log
+          {
+            cd "$BASE/n=11/01_COMPLETE_WORKING_PACKAGE"
+            bash run_phase_1_B48_B53.sh
+            bash run_phase_2_B54_B55.sh
+            bash run_phase_3_B56.sh
+          } 2>&1 | tee logs/n11.log
+          grep -F 'PHASE 3 PASSED: B=56 impossible' logs/n11.log
+          echo 'ERDOS506_N8_N11_FRESH_AUDIT=PASSED' | tee logs/final-marker.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-n8-n11-v100
+          path: logs
+
+  n12:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install replay tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip time g++
+      - name: Fresh complete n=12 regeneration
+        run: |
+          set -euo pipefail
+          mkdir -p audit outer n12 logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/n12.zip -d n12
+          N12="$(find n12 -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$N12"
+          /usr/bin/time -v bash "$N12/run_full.sh" --regenerate 2>&1 | tee logs/n12.log
+          grep -F 'N12_GENERAL_REGENERATION=PASSED degree_cases=4479' logs/n12.log
+          grep -F 'ERDOS506_N12_EXPENSIVE_REPLAY=PASSED f12=51' logs/n12.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-n12-v100
+          path: logs
+
+  n13:
+    strategy:
+      fail-fast: false
+      matrix:
+        level: [B80, B81, B82, B83]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install replay tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y unzip time g++
+      - name: Fresh replay selected n=13 level
+        env:
+          LEVEL: ${{ matrix.level }}
+        run: |
+          set -euo pipefail
+          mkdir -p audit outer pkg logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          unzip -q "outer/Erdos506/packages/n13/$LEVEL.zip" -d pkg
+          ROOT="$(find pkg -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$ROOT"
+          case "$LEVEL" in
+            B80) /usr/bin/time -v bash "$ROOT/run_v76_audit.sh" ;;
+            B81) /usr/bin/time -v python3 "$ROOT/verify_v75.py" ;;
+            B82) /usr/bin/time -v python3 "$ROOT/verify_v74.py" ;;
+            B83) /usr/bin/time -v bash "$ROOT/run_B83_complete_audit.sh" ;;
+          esac 2>&1 | tee "logs/$LEVEL.log"
+          case "$LEVEL" in
+            B80) grep -F 'ERDOS506_N13_B80_V76=PASSED' "logs/$LEVEL.log" ;;
+            B81) grep -F 'ERDOS506_N13_B81_V75=PASSED' "logs/$LEVEL.log" ;;
+            B82) grep -F 'ERDOS506_N13_B82_V74=PASSED' "logs/$LEVEL.log" ;;
+            B83) grep -F 'ERDOS506_N13_B83_COMPLETE=PASSED' "logs/$LEVEL.log" ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-n13-${{ matrix.level }}-v100
+          path: logs
+
+  n14_plus:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install replay tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y unzip time g++
+          python3 -m pip install --disable-pip-version-check --no-cache-dir 'sympy==1.14.0' 'mpmath==1.3.0'
+      - name: Extract frozen base and repair the known n=14 invocation locally
+        run: |
+          set -euo pipefail
+          mkdir -p audit outer base logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d base
+          BASE="$(find base -mindepth 1 -maxdepth 1 -type d -print -quit)"
+          test -n "$BASE"
+          echo "BASE=$BASE" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path(os.environ['BASE'])/'n=14/01_COMPLETE_WORKING_PACKAGE/run_extended_final_n14.sh'
+          t=p.read_text()
+          old='python3 inherited_v36/new_move/crosscheck_erdos506_n14_102700_all_286.py\n'
+          new='python3 inherited_v36/new_move/crosscheck_erdos506_n14_102700_all_286.py /tmp/e506_102700_all 60\n'
+          assert t.count(old)==1
+          p.write_text(t.replace(old,new,1))
+          PY
+      - name: Fresh replay n=14, n=15, n=16, and n>=17
+        run: |
+          set -euo pipefail
+          {
+            cd "$BASE/n=14/01_COMPLETE_WORKING_PACKAGE"
+            /usr/bin/time -v bash run_extended_final_n14.sh
+          } 2>&1 | tee logs/n14.log
+          grep -F 'sigma=1 86-job full regeneration: PASSED' logs/n14.log
+          grep -F 'Erdos #506 (10,27,0) all-286 labelled Pappus/Desargues cross-check: PASSED' logs/n14.log
+          grep -F '=== EXTENDED FINAL N14 AUDIT: PASSED ===' logs/n14.log
+          {
+            cd "$BASE/n=15/01_COMPLETE_WORKING_PACKAGE"
+            /usr/bin/time -v bash run_independent_proof.sh
+          } 2>&1 | tee logs/n15.log
+          grep -F 'Erdos #506 n=15 one-folder independent audit: PASSED; f(15)=85' logs/n15.log
+          {
+            cd "$BASE/n=16/01_REVIEW_READY_PACKAGE"
+            python3 verify_erdos506_f16_99.py
+          } 2>&1 | tee logs/n16.log
+          grep -F 'Erdos 506 n=16 exact-arithmetic certificate: PASSED' logs/n16.log
+          {
+            cd "$BASE/n=17_and_above/01_REVIEW_READY_PACKAGE"
+            python3 verify_erdos506_global_n_ge_17.py
+          } 2>&1 | tee logs/n17.log
+          grep -F 'all large-carrier arithmetic cells' logs/n17.log
+          echo 'ERDOS506_N14_PLUS_FRESH_AUDIT=PASSED' | tee logs/final-marker.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-n14-plus-v100
+          path: logs
+
+  static:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install compilers and extract all packages
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y unzip g++ clang
+          mkdir -p audit outer all/base all/n12 all/B80 all/B81 all/B82 all/B83 logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir audit
+          echo "$SOURCE_SHA256  audit/Erdos506.zip" | sha256sum -c -
+          unzip -q audit/Erdos506.zip -d outer
+          unzip -q outer/Erdos506/packages/base.zip -d all/base
+          unzip -q outer/Erdos506/packages/n12.zip -d all/n12
+          for b in B80 B81 B82 B83; do unzip -q "outer/Erdos506/packages/n13/$b.zip" -d "all/$b"; done
+      - name: Static source audit
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' | tee logs/static.log
+          from pathlib import Path
+          import ast, concurrent.futures, re, subprocess
+          roots=[p for p in Path('all').iterdir() if p.is_dir()]
+          shs=sorted({p for r in roots for p in r.rglob('*.sh')})
+          for p in shs:
+              q=subprocess.run(['bash','-n',str(p)],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+              assert q.returncode==0,(p,q.stdout)
+          print(f'SHELL_SYNTAX_AUDIT=PASSED files={len(shs)}')
+          pys=sorted({p for r in roots for p in r.rglob('*.py')})
+          for p in pys: ast.parse(p.read_text(encoding='utf-8',errors='strict'),filename=str(p))
+          print(f'PYTHON_AST_AUDIT=PASSED files={len(pys)}')
+          pat=re.compile(r'(^|[;&|]\s*)(curl|wget|npm\s+(?:i|install)|pip(?:3)?\s+install)\b',re.M)
+          active=[]
+          for p in shs:
+              if pat.search(p.read_text(errors='replace')): active.append(str(p))
+          assert not active,active
+          print('ACTIVE_RUNNER_NETWORK_INSTALL_SCAN=PASSED')
+          cpps=sorted({p for r in roots for p in r.rglob('*') if p.suffix in {'.cpp','.cc','.cxx'}})
+          def check(item):
+              comp,p=item
+              q=subprocess.run([comp,'-std=c++20','-fsyntax-only','-I',str(p.parent),p.name],cwd=p.parent,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,timeout=300)
+              return comp,p,q.returncode,q.stdout
+          for comp in ['g++','clang++']:
+              bad=[]
+              with concurrent.futures.ThreadPoolExecutor(max_workers=4) as ex:
+                  for c,p,rc,out in ex.map(check,[(comp,p) for p in cpps]):
+                      if rc: bad.append((p,out[-2000:]))
+              assert not bad,(comp,bad[:10])
+              print(f'{comp.upper()}_SYNTAX_AUDIT=PASSED files={len(cpps)}')
+          print('ERDOS506_STATIC_SOURCE_AUDIT=PASSED')
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-static-v100
+          path: logs
+
+  complete:
+    if: always()
+    needs: [integrity, n8_n11, n12, n13, n14_plus, static]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every audit job to succeed
+        env:
+          INTEGRITY: ${{ needs.integrity.result }}
+          N8_N11: ${{ needs.n8_n11.result }}
+          N12: ${{ needs.n12.result }}
+          N13: ${{ needs.n13.result }}
+          N14_PLUS: ${{ needs.n14_plus.result }}
+          STATIC: ${{ needs.static.result }}
+        run: |
+          set -euo pipefail
+          printf '%s\n' "integrity=$INTEGRITY" "n8_n11=$N8_N11" "n12=$N12" "n13=$N13" "n14_plus=$N14_PLUS" "static=$STATIC"
+          test "$INTEGRITY" = success
+          test "$N8_N11" = success
+          test "$N12" = success
+          test "$N13" = success
+          test "$N14_PLUS" = success
+          test "$STATIC" = success
+          echo 'ERDOS506_FROZEN_PROJECT_AUDIT=PASSED'
