@@ -1,4 +1,4 @@
-name: Publish corrected v1.0.2
+name: Publish corrected self-contained v1.0.2
 
 on:
   push:
@@ -7,6 +7,7 @@ on:
     paths:
       - .github/workflows/publish-v1.0.2.yml
       - tools/build_corrected_archive_v102.py
+      - tools/vendor_python_cas_v102.py
   workflow_dispatch:
 
 permissions:
@@ -27,7 +28,9 @@ jobs:
       SOURCE_SHA256: 528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3
       VENDOR_RUN_ID: "32760966595"
       VENDOR_SHA256: e5fb041f3b1226d6a60c25de18583ce46ebcbe69f0eea1cc0f25855694973b20
-      EXPECTED_V102_SHA256: d7c5b7146d4ae3c58c54e0dcb584477120907b694a40486191496e2014511b72
+      PRELIMINARY_SHA256: d7c5b7146d4ae3c58c54e0dcb584477120907b694a40486191496e2014511b72
+      SYMPY_SHA256: e091cc3e99d2141a0ba2847328f5479b05d94a6635cb96148ccb3f34671bd8f5
+      MPMATH_SHA256: a0b2b9fe80bbcd81a6647ff13108738cfb482d481d826cc0e02f5b35e5c88d2c
 
     steps:
       - name: Check out release branch
@@ -49,9 +52,9 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install -y unzip zip time g++ clang
+          sudo apt-get install -y unzip zip time g++ clang curl
 
-      - name: Fail if v1.0.2 already exists
+      - name: Refuse to overwrite an existing release
         run: |
           set -euo pipefail
           if gh release view v1.0.2 --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
@@ -59,11 +62,12 @@ jobs:
             exit 1
           fi
 
-      - name: Download immutable predecessor assets
+      - name: Download and authenticate immutable predecessor assets
         run: |
           set -euo pipefail
-          mkdir -p inputs unchanged-assets vendor-artifact dist logs
-          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" --pattern Erdos506.zip --dir inputs
+          mkdir -p inputs unchanged-assets vendor-artifact wheels pre-dist dist logs
+          gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" \
+            --pattern Erdos506.zip --dir inputs
           gh release download "$SOURCE_TAG" --repo "$GITHUB_REPOSITORY" \
             --pattern erdos506_preprint.pdf \
             --pattern erdos506_computational_supplement.pdf \
@@ -76,7 +80,7 @@ jobs:
           echo "ead0e3e30712ea63dcea4dfdf791c563a265c94892495e179ddab8b753f8a763  unchanged-assets/arxiv-source.zip" | sha256sum -c -
           echo "6d3489f6f1155739d00b63a38f337e228de6850cb187d6ee933d898b24569a67  unchanged-assets/supplement-source.zip" | sha256sum -c -
 
-      - name: Download pinned offline SAT backend
+      - name: Download and authenticate pinned SAT backend
         run: |
           set -euo pipefail
           gh run download "$VENDOR_RUN_ID" --repo "$GITHUB_REPOSITORY" \
@@ -85,22 +89,48 @@ jobs:
           test -s vendor-artifact/cadical-wasm-0.1.2-vendor.tar.gz
           echo "$VENDOR_SHA256  vendor-artifact/cadical-wasm-0.1.2-vendor.tar.gz" | sha256sum -c -
 
-      - name: Build deterministic corrected archive
+      - name: Download and authenticate pinned Python symbolic runtime
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output wheels/sympy-1.14.0-py3-none-any.whl \
+            https://files.pythonhosted.org/packages/a2/09/77d55d46fd61b4a135c444fc97158ef34a095e5681d0a6c10b75bf356191/sympy-1.14.0-py3-none-any.whl
+          curl --fail --location --retry 5 --retry-all-errors \
+            --output wheels/mpmath-1.3.0-py3-none-any.whl \
+            https://files.pythonhosted.org/packages/43/e3/7d92a15f894aa0c9c4b49b8ee9ac9850d6e63b03c9c32c0367a13ae62209/mpmath-1.3.0-py3-none-any.whl
+          echo "$SYMPY_SHA256  wheels/sympy-1.14.0-py3-none-any.whl" | sha256sum -c -
+          echo "$MPMATH_SHA256  wheels/mpmath-1.3.0-py3-none-any.whl" | sha256sum -c -
+
+      - name: Build deterministic preliminary corrected archive
         run: |
           set -euo pipefail
           python3 tools/build_corrected_archive_v102.py \
             --source inputs/Erdos506.zip \
             --vendor-tgz vendor-artifact/cadical-wasm-0.1.2-vendor.tar.gz \
-            --build-dir build-v102 \
-            --output-dir dist | tee logs/build.log
-          echo "$EXPECTED_V102_SHA256  dist/Erdos506.zip" | sha256sum -c -
+            --build-dir build-preliminary \
+            --output-dir pre-dist | tee logs/preliminary-build.log
+          echo "$PRELIMINARY_SHA256  pre-dist/Erdos506.zip" | sha256sum -c -
+
+      - name: Vendor Python CAS and build final self-contained archive
+        run: |
+          set -euo pipefail
+          python3 tools/vendor_python_cas_v102.py \
+            --source pre-dist/Erdos506.zip \
+            --sympy-wheel wheels/sympy-1.14.0-py3-none-any.whl \
+            --mpmath-wheel wheels/mpmath-1.3.0-py3-none-any.whl \
+            --work-dir build-final \
+            --output-dir dist | tee logs/final-build.log
+          FINAL_SHA256="$(sha256sum dist/Erdos506.zip | awk '{print $1}')"
+          test -n "$FINAL_SHA256"
+          echo "FINAL_SHA256=$FINAL_SHA256" >> "$GITHUB_ENV"
           (
             cd dist
             sha256sum Erdos506.zip > Erdos506.zip.sha256
             sha256sum -c Erdos506.zip.sha256
           )
+          echo "Canonical final SHA-256: $FINAL_SHA256"
 
-      - name: Run quick and v1.0.2 structural audits
+      - name: Run quick and corrected-release structural audits
         run: |
           set -euo pipefail
           mkdir clean-v102
@@ -111,13 +141,14 @@ jobs:
           grep -F "ERDOS506_QUICK_AUDIT=PASSED" "$GITHUB_WORKSPACE/logs/quick.log"
           grep -F "ERDOS506_V102_AUDIT=PASSED" "$GITHUB_WORKSPACE/logs/v102.log"
 
-      - name: Run complete clean replay
+      - name: Run complete clean replay of all active proof packages
         run: |
           set -euo pipefail
           cd clean-v102/Erdos506
           /usr/bin/time -v python3 verify.py --full \
-            > "$GITHUB_WORKSPACE/logs/full.log" \
-            2> "$GITHUB_WORKSPACE/logs/full.time"
+            2> >(tee "$GITHUB_WORKSPACE/logs/full.time" >&2) \
+            | tee "$GITHUB_WORKSPACE/logs/full.log"
+          grep -F "PYTHON_CAS_VENDOR=PASSED" "$GITHUB_WORKSPACE/logs/full.log"
           grep -F "Erdos #506 n=9 independent proof audit: PASSED; f(9)=25" "$GITHUB_WORKSPACE/logs/full.log"
           grep -F "all 61 AA ordinary-pair branches are UNSAT" "$GITHUB_WORKSPACE/logs/full.log"
           grep -F "all 61 AB ordinary-pair branches are UNSAT" "$GITHUB_WORKSPACE/logs/full.log"
@@ -147,7 +178,7 @@ jobs:
           cp -a clean-v102 mutation-missing
           rm mutation-missing/Erdos506/packages/n13/B83.zip
           if (cd mutation-missing/Erdos506 && python3 verify.py > "$GITHUB_WORKSPACE/logs/mutation-missing.log" 2>&1); then
-            echo "Missing package was incorrectly accepted." >&2
+            echo "Missing proof package was incorrectly accepted." >&2
             exit 1
           fi
           printf "OUTER_MUTATION=REJECTED\nMISSING_PACKAGE=REJECTED\nFAIL_CLOSED_MUTATION_TESTS=PASSED\n" | tee logs/negative.log
@@ -156,18 +187,21 @@ jobs:
         run: |
           set -euo pipefail
           cp unchanged-assets/* dist/
-          cp logs/quick.log logs/v102.log logs/full.log logs/full.time logs/negative.log logs/build.log dist/
           mkdir audit-bundle
-          cp logs/* audit-bundle/
+          cp logs/*.log logs/*.time audit-bundle/ 2>/dev/null || true
           cp dist/Erdos506.zip.sha256 audit-bundle/
-          (
-            cd audit-bundle
-            zip -q -9 -r ../dist/Erdos506_AUDIT_v1.0.2.zip .
-          )
+          printf "%s\n" \
+            "Erdős Problem 506 corrected self-contained release audit" \
+            "Canonical archive SHA-256: $FINAL_SHA256" \
+            "Quick audit: PASSED" \
+            "Corrected-release structural audit: PASSED" \
+            "Complete clean replay: PASSED" \
+            "Fail-closed mutation tests: PASSED" \
+            > audit-bundle/RELEASE_AUDIT.txt
+          (cd audit-bundle && zip -q -9 -r ../dist/Erdos506_AUDIT_v1.0.2.zip .)
           (
             cd dist
             sha256sum Erdos506_AUDIT_v1.0.2.zip > Erdos506_AUDIT_v1.0.2.zip.sha256
-            sha256sum -c Erdos506_AUDIT_v1.0.2.zip.sha256
             sha256sum \
               Erdos506.zip \
               Erdos506.zip.sha256 \
@@ -181,26 +215,26 @@ jobs:
             sha256sum -c ASSET_SHA256SUMS.txt
           )
           printf "%s\n" \
-            "# Erdős Problem 506 — corrected proof archive v1.0.2" \
+            "# Erdős Problem 506 — corrected self-contained proof archive v1.0.2" \
             "" \
-            "This patch release corrects replay packaging only; mathematical inputs and claimed values are unchanged." \
+            "This patch release corrects reproducibility packaging only. Mathematical inputs, theorem statements, certificates, and claimed values are unchanged." \
             "" \
-            "Corrections: fixed the n=14 all-286 invocation, vendored and checksummed cadical-wasm@0.1.2 for offline n=10 replay, and made the full verifier execute both complete paths." \
+            "Corrections: the n=14 all-286 invocation receives its required arguments; cadical-wasm 0.1.2, SymPy 1.14.0, and mpmath 1.3.0 are vendored and checksummed for offline replay; the full verifier executes the complete n=10 and n=14 paths." \
             "" \
-            "Publication gate passed: deterministic build, exact SHA-256, quick audit, v1.0.2 audit, complete clean replay, all 61 AA and 61 AB branches, all n=13 levels, all 286 n=14 placements, and fail-closed mutation tests." \
+            "Publication gate passed: deterministic builds, quick audit, corrected-release audit, complete clean replay, all 61 AA and 61 AB n=10 branches, all n=13 levels, all 286 n=14 placements, and fail-closed mutation tests." \
             "" \
-            "Canonical Erdos506.zip SHA-256: $EXPECTED_V102_SHA256" \
+            "Canonical Erdos506.zip SHA-256: $FINAL_SHA256" \
             "" \
             "Independent human mathematical and formal review remains invited. No claim of journal peer review or adjudicated priority is made." \
             > logs/RELEASE_NOTES.md
 
-      - name: Publish immutable v1.0.2 release
+      - name: Publish immutable corrected release
         run: |
           set -euo pipefail
           gh release create v1.0.2 \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \
-            --title "Erdős Problem 506 — corrected proof archive v1.0.2" \
+            --title "Erdős Problem 506 — corrected self-contained proof archive v1.0.2" \
             --notes-file logs/RELEASE_NOTES.md \
             --latest \
             dist/Erdos506.zip \
@@ -213,7 +247,7 @@ jobs:
             dist/Erdos506_AUDIT_v1.0.2.zip \
             dist/Erdos506_AUDIT_v1.0.2.zip.sha256
 
-      - name: Verify public release assets
+      - name: Re-download and verify public release assets
         run: |
           set -euo pipefail
           mkdir public-download
@@ -223,16 +257,25 @@ jobs:
             sha256sum -c Erdos506.zip.sha256
             sha256sum -c Erdos506_AUDIT_v1.0.2.zip.sha256
             sha256sum -c ASSET_SHA256SUMS.txt
+            test "$(sha256sum Erdos506.zip | awk '{print $1}')" = "$FINAL_SHA256"
             unzip -t Erdos506.zip >/dev/null
           )
+          mkdir public-proof
+          unzip -q public-download/Erdos506.zip -d public-proof
+          cd public-proof/Erdos506
+          python3 verify.py | tee "$GITHUB_WORKSPACE/logs/public-quick.log"
+          python3 verify_v102.py | tee "$GITHUB_WORKSPACE/logs/public-v102.log"
+          grep -F "ERDOS506_QUICK_AUDIT=PASSED" "$GITHUB_WORKSPACE/logs/public-quick.log"
+          grep -F "ERDOS506_V102_AUDIT=PASSED" "$GITHUB_WORKSPACE/logs/public-v102.log"
           echo "PUBLIC_RELEASE_V1_0_2_AUDIT=PASSED"
 
-      - name: Upload diagnostic artifacts
+      - name: Upload publication diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: erdos506-v1.0.2-publication-diagnostics
+          name: erdos506-v1.0.2-publication-diagnostics-final
           path: |
             logs
             dist
           if-no-files-found: ignore
+          retention-days: 90
