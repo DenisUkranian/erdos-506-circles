@@ -17,6 +17,7 @@ jobs:
       - name: Dispatch the fail-closed publication workflow
         env:
           GH_TOKEN: ${{ github.token }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           set -euo pipefail
           gh workflow run publish-v1.0.2-from-main.yml \
@@ -24,6 +25,3 @@ jobs:
             --ref main
           gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --body "The final fail-closed v1.0.2 publication workflow has been dispatched from the default branch."
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
