@@ -1,3 +1,4 @@
+# Publication trigger: cache-free vendored Python manifest verified locally.
 name: Publish corrected self-contained v1.0.2
 
 on:
