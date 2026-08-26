@@ -171,6 +171,19 @@ for cache in list(base.rglob('__pycache__')):
 for pyc in list(base.rglob('*.pyc')):
     pyc.unlink()
 
+# The CAS builder's vendor manifest was written after its import probe and may
+# therefore list interpreter caches. Regenerate it over the cache-free tree.
+python_vendor = base / 'third_party/python'
+if not python_vendor.is_dir():
+    raise SystemExit('missing vendored Python CAS runtime')
+manifest_for(python_vendor, python_vendor / 'MANIFEST.sha256', {'MANIFEST.sha256'})
+subprocess.run(
+    ['sha256sum', '-c', 'MANIFEST.sha256'],
+    cwd=python_vendor,
+    check=True,
+    stdout=subprocess.DEVNULL,
+)
+
 # Repair executable modes lost by Python wheel/archive extraction. Every active
 # directly-invoked source script in the predecessor package has a shebang.
 outer_exec, outer_regular = normalize_modes(root)
