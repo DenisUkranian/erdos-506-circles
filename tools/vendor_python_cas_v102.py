@@ -33,6 +33,12 @@ def write(path: Path, text: str, mode: int | None = None) -> None:
 
 
 def safe_extract_zip(source: Path, destination: Path) -> None:
+    """Extract a ZIP after validating paths and restore recorded Unix modes.
+
+    Python's ZipFile.extractall() does not reliably restore executable bits.
+    The proof package has shell runners that invoke sibling scripts directly,
+    so losing those bits makes an otherwise valid replay fail with rc=126.
+    """
     destination.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(source) as zf:
         names = zf.namelist()
@@ -49,6 +55,11 @@ def safe_extract_zip(source: Path, destination: Path) -> None:
         if bad:
             raise RuntimeError(f"CRC failure in {source}: {bad}")
         zf.extractall(destination)
+        for info in zf.infolist():
+            target = destination / Path(info.filename)
+            mode = (info.external_attr >> 16) & 0xFFFF
+            if mode and target.exists():
+                target.chmod(mode & 0o7777)
 
 
 def normalize_tree(root: Path) -> None:
@@ -136,6 +147,13 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+def require_executable(path: Path) -> None:
+    if not path.is_file():
+        raise RuntimeError(f"required replay script is missing: {path}")
+    if not os.access(path, os.X_OK):
+        raise RuntimeError(f"required replay script lost its executable mode: {path}")
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--source", required=True, type=Path)
 parser.add_argument("--sympy-wheel", required=True, type=Path)
@@ -171,6 +189,13 @@ if not root.is_dir():
     raise SystemExit("missing Erdos506 root")
 safe_extract_zip(root / "packages/base.zip", base_dir)
 base = single_directory(base_dir)
+
+# Guard the exact mode loss that caused publication run #6 to fail.
+require_executable(
+    base / "95_POST_V56_RECOVERY_CHECKPOINT/run_n12_post_v54_structural.sh"
+)
+require_executable(base / "n=10/01_COMPLETE_WORKING_PACKAGE/run_independent_proof.sh")
+require_executable(base / "n=14/01_COMPLETE_WORKING_PACKAGE/run_extended_final_n14.sh")
 
 vendor = base / "third_party/python"
 if vendor.exists():
@@ -220,6 +245,19 @@ files are preserved. `third_party/python/MANIFEST.sha256` authenticates every
 vendored file. The outer verifier prepends this directory to `PYTHONPATH`
 before the n=11 and n=14 symbolic terminals run. No network or package
 installation is required after downloading the archive.
+""",
+)
+
+write(
+    base / "N13_HISTORICAL_WIP_NOTICE.md",
+    """# Historical n=13 WIP material
+
+Some predecessor recovery directories retained inside the base package contain
+historical status text from before B=80,81,82,83 were closed. They are retained
+only as provenance and are not dispatched by the active verifier. The active
+n=13 proof objects are the separate packages `B80.zip`, `B81.zip`, `B82.zip`,
+and `B83.zip`; B=84,85,86 are excluded by the proved bound B<=83 and are not
+open proof branches.
 """,
 )
 
@@ -316,6 +354,22 @@ deterministic_zip(base, base_zip_2)
 if sha256(base_zip_1) != sha256(base_zip_2):
     raise SystemExit("base package deterministic rebuild mismatch")
 shutil.copy2(base_zip_1, root / "packages/base.zip")
+
+# Re-open the rebuilt base package and fail before publication if any essential
+# runner lost its Unix executable bit in the ZIP metadata.
+mode_probe_dir = work / "mode-probe"
+safe_extract_zip(root / "packages/base.zip", mode_probe_dir)
+mode_probe_base = single_directory(mode_probe_dir)
+require_executable(
+    mode_probe_base / "95_POST_V56_RECOVERY_CHECKPOINT/run_n12_post_v54_structural.sh"
+)
+require_executable(
+    mode_probe_base / "n=10/01_COMPLETE_WORKING_PACKAGE/run_independent_proof.sh"
+)
+require_executable(
+    mode_probe_base / "n=14/01_COMPLETE_WORKING_PACKAGE/run_extended_final_n14.sh"
+)
+print("REPLAY_EXECUTABLE_MODES=PASSED")
 
 package_rows: list[str] = []
 for rel in [
