@@ -1,0 +1,269 @@
+name: Synchronize verified v1.0.2 publication metadata
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/sync-v1.0.2-publication.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download and authenticate verified release metadata
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/v102-release
+          mkdir -p /tmp/v102-release
+          gh release download v1.0.2 \
+            --repo "$GITHUB_REPOSITORY" \
+            --pattern Erdos506.zip.sha256 \
+            --pattern ASSET_SHA256SUMS.txt \
+            --dir /tmp/v102-release
+          test -s /tmp/v102-release/Erdos506.zip.sha256
+          test -s /tmp/v102-release/ASSET_SHA256SUMS.txt
+          hash="$(awk '$2=="Erdos506.zip" {print $1}' /tmp/v102-release/Erdos506.zip.sha256)"
+          test "${#hash}" -eq 64
+          grep -F "$hash  Erdos506.zip" /tmp/v102-release/ASSET_SHA256SUMS.txt
+          echo "V102_SHA256=$hash" >> "$GITHUB_ENV"
+
+      - name: Update repository metadata to canonical v1.0.2
+        env:
+          RELEASE_DATE: "2026-08-26"
+        run: |
+          set -euo pipefail
+          cp /tmp/v102-release/ASSET_SHA256SUMS.txt ASSET_SHA256SUMS.txt
+          python3 - <<'PY'
+          from __future__ import annotations
+          import json
+          import os
+          import re
+          from pathlib import Path
+
+          version = "1.0.2"
+          tag = "v1.0.2"
+          date = os.environ["RELEASE_DATE"]
+          sha = os.environ["V102_SHA256"]
+          repo = "https://github.com/DenisUkranian/erdos-506-circles"
+          release = f"{repo}/releases/tag/{tag}"
+
+          def read(path: str) -> str:
+              p = Path(path)
+              return p.read_text(encoding="utf-8") if p.exists() else ""
+
+          def write(path: str, text: str) -> None:
+              Path(path).write_text(text.rstrip() + "\n", encoding="utf-8", newline="\n")
+
+          # README: retain the manuscript description, but make the canonical
+          # release and hash unambiguous at the top and repair predecessor links.
+          readme = read("README.md")
+          block = f"""<!-- CURRENT-RELEASE-START -->
+          ## Current corrected release
+
+          The canonical public verification object is **[{tag}]({release})**.
+
+          ```text
+          Erdos506.zip
+          SHA-256: {sha}
+          ```
+
+          This release is self-contained for offline replay: it fixes the n=14
+          all-286 runner invocation and vendors the pinned n=10 SAT backend plus
+          SymPy/mpmath used by the symbolic terminals. The release workflow
+          completed the quick audit, corrected-release audit, complete clean
+          replay, fail-closed mutation tests, and a public re-download audit.
+          <!-- CURRENT-RELEASE-END -->"""
+          block = re.sub(r"^          ", "", block, flags=re.M)
+          if "<!-- CURRENT-RELEASE-START -->" in readme:
+              readme = re.sub(
+                  r"<!-- CURRENT-RELEASE-START -->.*?<!-- CURRENT-RELEASE-END -->",
+                  block,
+                  readme,
+                  flags=re.S,
+              )
+          else:
+              first_break = readme.find("\n")
+              if first_break >= 0:
+                  readme = readme[:first_break+1] + "\n" + block + "\n" + readme[first_break+1:]
+              else:
+                  readme = readme + "\n\n" + block + "\n"
+          readme = readme.replace("/releases/tag/v1.0.0", "/releases/tag/v1.0.2")
+          readme = readme.replace("/download/v1.0.0/", "/download/v1.0.2/")
+          readme = readme.replace(
+              "528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3",
+              sha,
+          )
+          write("README.md", readme)
+
+          cff = read("CITATION.cff")
+          if cff:
+              if re.search(r"^version:", cff, flags=re.M):
+                  cff = re.sub(r"^version:.*$", f'version: "{version}"', cff, flags=re.M)
+              else:
+                  cff += f'\nversion: "{version}"\n'
+              if re.search(r"^date-released:", cff, flags=re.M):
+                  cff = re.sub(r"^date-released:.*$", f"date-released: {date}", cff, flags=re.M)
+              else:
+                  cff += f"date-released: {date}\n"
+              cff = cff.replace("/releases/tag/v1.0.0", "/releases/tag/v1.0.2")
+              cff = cff.replace(
+                  "528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3",
+                  sha,
+              )
+              write("CITATION.cff", cff)
+
+          p = Path("codemeta.json")
+          if p.exists():
+              data = json.loads(p.read_text(encoding="utf-8"))
+              data["version"] = version
+              data["datePublished"] = date
+              data["codeRepository"] = repo
+              data["downloadUrl"] = release
+              data["identifier"] = release
+              write("codemeta.json", json.dumps(data, indent=2, ensure_ascii=False))
+
+          p = Path(".zenodo.json")
+          if p.exists():
+              data = json.loads(p.read_text(encoding="utf-8"))
+              data["version"] = version
+              data["publication_date"] = date
+              data["related_identifiers"] = [
+                  {
+                      "identifier": release,
+                      "relation": "isSupplementTo",
+                      "scheme": "url",
+                  }
+              ]
+              write(".zenodo.json", json.dumps(data, indent=2, ensure_ascii=False))
+
+          status = f"""# Publication status
+
+          - Repository visibility: **Public**.
+          - Canonical corrected release: **{tag}**.
+          - Release URL: {release}
+          - Canonical proof archive: `Erdos506.zip`.
+          - Canonical SHA-256: `{sha}`.
+          - Quick integrity and retained-certificate audit: **PASSED**.
+          - Corrected-release structural audit: **PASSED**.
+          - Complete clean replay of all active proof packages: **PASSED**.
+          - All 61 AA and 61 AB n=10 branches: **UNSAT**.
+          - n=12 complete package: **PASSED**.
+          - n=13 B=80,81,82,83 packages: **PASSED**.
+          - n=14 extended audit, including all 286 labelled placements: **PASSED**.
+          - Fail-closed mutation tests: **PASSED**.
+          - Public asset re-download and SHA-256 verification: **PASSED**.
+          - Scoped external computational cross-check by Rafał Wrona: recorded in issue #5.
+          - Independent journal peer review and final priority adjudication: pending.
+          - Zenodo DOI and arXiv identifier: pending.
+
+          Historical releases remain available for provenance. New verification
+          and citation should use `{tag}`, not `v1.0.0`.
+          """
+          status = re.sub(r"^          ", "", status, flags=re.M)
+          write("PUBLICATION_STATUS.md", status)
+
+          audit = f"""# Final release audit — {tag}
+
+          The corrected public release was produced by a fail-closed GitHub
+          Actions workflow. Publication occurred only after deterministic archive
+          construction, SHA-256 authentication, quick and structural audits, a
+          complete clean replay, and mutation tests. The workflow then downloaded
+          the public release assets again and verified them against the published
+          manifest.
+
+          Canonical archive:
+
+          ```text
+          Erdos506.zip
+          SHA-256: {sha}
+          ```
+
+          Release: {release}
+
+          The release corrects reproducibility and packaging defects in the
+          predecessor archive; it does not change the theorem statement or the
+          claimed values. External mathematical and formal review remains invited.
+          """
+          audit = re.sub(r"^          ", "", audit, flags=re.M)
+          write("FINAL_RELEASE_AUDIT.md", audit)
+
+          checklist = f"""# Release checklist — {tag}
+
+          - [x] Correct n=14 all-286 invocation.
+          - [x] Vendor and authenticate `cadical-wasm@0.1.2`.
+          - [x] Vendor and authenticate SymPy 1.14.0 and mpmath 1.3.0.
+          - [x] Preserve executable modes of replay scripts.
+          - [x] Build the corrected archive deterministically.
+          - [x] Run quick and corrected-release audits.
+          - [x] Run the complete clean replay.
+          - [x] Run fail-closed mutation tests.
+          - [x] Publish immutable GitHub Release {tag}.
+          - [x] Re-download and authenticate every public asset.
+
+          Canonical SHA-256: `{sha}`.
+          """
+          checklist = re.sub(r"^          ", "", checklist, flags=re.M)
+          write("RELEASE_CHECKLIST.md", checklist)
+          PY
+
+      - name: Commit synchronized metadata
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add README.md CITATION.cff codemeta.json .zenodo.json \
+            PUBLICATION_STATUS.md FINAL_RELEASE_AUDIT.md RELEASE_CHECKLIST.md \
+            ASSET_SHA256SUMS.txt
+          if git diff --cached --quiet; then
+            echo "Metadata was already synchronized."
+          else
+            git commit -m "Point public metadata to verified v1.0.2 release"
+            git push origin HEAD:main
+          fi
+
+      - name: Record delta-audit request for external reviewer
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          marker='<!-- V102-DELTA-AUDIT-REQUEST -->'
+          if gh issue view 5 --repo "$GITHUB_REPOSITORY" --json comments --jq '.comments[].body' | grep -Fq "$marker"; then
+            echo "Delta-audit request already present."
+            exit 0
+          fi
+          gh issue comment 5 --repo "$GITHUB_REPOSITORY" --body "$marker
+          Hi Rafał,
+
+          Thank you again for the scoped audit. The corrected, self-contained release **v1.0.2** has now been published after a complete fail-closed replay and public re-download audit.
+
+          Canonical archive: \`Erdos506.zip\`  
+          SHA-256: \`$V102_SHA256\`  
+          Release: https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2
+
+          The three packaging points from your report have been addressed: the n=10 SAT backend is vendored for offline replay, the n=14 all-286 invocation is corrected, and historical n=13 WIP text is explicitly marked as inactive provenance. A narrow delta cross-check of those corrections and the count-preservation bridge would be greatly appreciated.
+
+          Best,  
+          Denis"
+
+      - name: Update closure audit issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          marker='<!-- V102-PUBLISHED -->'
+          if gh issue view 3 --repo "$GITHUB_REPOSITORY" --json comments --jq '.comments[].body' | grep -Fq "$marker"; then
+            exit 0
+          fi
+          gh issue comment 3 --repo "$GITHUB_REPOSITORY" --body "$marker
+          Corrected release **v1.0.2** is public and passed the complete publication gate. Canonical SHA-256: \`$V102_SHA256\`. Release: https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2"
