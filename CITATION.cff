@@ -5,11 +5,11 @@ type: software
 authors:
   - family-names: "Paliy"
     given-names: "Denis"
-version: 1.0.0
-date-released: 2026-08-24
+version: 1.0.2
+date-released: 2026-08-28
 license: MIT
 repository-code: "https://github.com/DenisUkranian/erdos-506-circles"
-url: "https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.0"
+url: "https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2"
 preferred-citation:
   type: article
   title: "The Minimum Number of Circles Determined by Planar Point Sets under the Elliott-Purdy-Smith Convention"

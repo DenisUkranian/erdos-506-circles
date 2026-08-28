@@ -17,7 +17,7 @@ jobs:
       - name: Download canonical proof archive
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release download v1.0.0 --pattern Erdos506.zip --dir verification
+        run: gh release download v1.0.2 --pattern Erdos506.zip --dir verification
       - name: Check archive
         run: cd verification && sha256sum -c Erdos506.zip.sha256
       - name: Extract

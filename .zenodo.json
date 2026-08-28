@@ -17,5 +17,14 @@
     "exact enumeration"
   ],
   "license": "MIT",
-  "access_right": "open"
+  "access_right": "open",
+  "version": "1.0.2",
+  "publication_date": "2026-08-28",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
 }

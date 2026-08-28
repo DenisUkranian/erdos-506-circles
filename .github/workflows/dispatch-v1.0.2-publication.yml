@@ -1,27 +1,15 @@
-name: Dispatch final v1.0.2 publication
+name: "[archived] Dispatch v1.0.2 publication"
 
 on:
-  issues:
-    types: [opened]
+  workflow_dispatch:
 
 permissions:
-  actions: write
   contents: read
-  issues: write
 
 jobs:
-  dispatch:
-    if: github.event.issue.title == 'TRIGGER FINAL V1.0.2 PUBLICATION'
+  archived:
     runs-on: ubuntu-latest
     steps:
-      - name: Dispatch the fail-closed publication workflow
-        env:
-          GH_TOKEN: ${{ github.token }}
-          ISSUE_NUMBER: ${{ github.event.issue.number }}
-        run: |
-          set -euo pipefail
-          gh workflow run publish-v1.0.2-from-main.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref main
-          gh issue comment "$ISSUE_NUMBER" --repo "$GITHUB_REPOSITORY" \
-            --body "The final fail-closed v1.0.2 publication workflow has been dispatched from the default branch."
+      - run: |
+          echo "Archived: v1.0.2 is already public."
+          echo "This workflow performs no writes."

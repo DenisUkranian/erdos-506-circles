@@ -5,7 +5,7 @@ cd "$root"
 
 if [ ! -f verification/Erdos506.zip ]; then
   echo "Missing verification/Erdos506.zip." >&2
-  echo "Download Erdos506.zip from GitHub Release v1.0.0 and place it in verification/." >&2
+  echo "Download Erdos506.zip from GitHub Release v1.0.2 and place it in verification/." >&2
   exit 2
 fi
 
@@ -15,4 +15,5 @@ mkdir -p /tmp/erdos506-repository-quick
 unzip -q verification/Erdos506.zip -d /tmp/erdos506-repository-quick
 cd /tmp/erdos506-repository-quick/Erdos506
 python3 verify.py
+python3 verify_v102.py
 echo "ERDOS506_REPOSITORY_QUICK=PASSED"

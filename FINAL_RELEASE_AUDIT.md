@@ -1,50 +1,60 @@
-# Final release audit
+# Final release audit — v1.0.2
 
-GitHub Release `v1.0.0` was published on 24 August 2026 only after a fail-closed workflow verified every release asset and replayed the canonical quick proof audit.
+GitHub Release [`v1.0.2`](https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2) was published on 28 August 2026 from the frozen, pre-verified asset set. It is public, is neither a draft nor a pre-release, and is the repository's Latest release. Tag `v1.0.2` resolves to commit `0fecffaecd3a53999aaef1b8a23a4665088af938`.
 
-## Publication files
+## Corrected verification archive
 
-- manuscript clean compile: passed, 8 pages;
-- computational supplement clean compile: passed, 5 pages;
-- deterministic arXiv source ZIP: passed;
-- deterministic supplement source ZIP: passed;
-- all five release assets matched `ASSET_SHA256SUMS.txt`.
+This patch release changes reproducibility and package hygiene, not the mathematical inputs or claimed values. It:
 
-## Canonical verification object
+- fixes the `n=14` all-286 runner invocation;
+- vendors and checksums `cadical-wasm@0.1.2` for offline `n=10` replay;
+- vendors and checksums SymPy 1.14.0 and mpmath 1.3.0;
+- restores executable modes required by nested proof runners;
+- marks the stale `n=13` WIP snapshot explicitly historical and inactive;
+- makes the full verifier execute the complete `n=10` and extended `n=14` paths.
 
-```text
-528cabbc1e6cbd842ce34ab8c52ab34bd99ad1bf46dc015a45de1126466bd9f3  Erdos506.zip
-```
-
-Checks performed from a clean extraction include:
+Canonical object:
 
 ```text
-TOP_MANIFEST=PASSED
-PACKAGE=base ZIP=OK
-PACKAGE=n12 ZIP=OK
-PACKAGE=B80 ZIP=OK
-PACKAGE=B81 ZIP=OK
-PACKAGE=B82 ZIP=OK
-PACKAGE=B83 ZIP=OK
-MANIFEST=base PASSED
-MANIFEST=n12 PASSED
-MANIFEST=B80 PASSED
-MANIFEST=B81 PASSED
-MANIFEST=B82 PASSED
-MANIFEST=B83 PASSED
-RETAINED_FINAL_AUDITS=PASSED
-ERDOS506_VALUE_ARITHMETIC=PASSED
-ERDOS506_QUICK_AUDIT=PASSED
+100316dcf37b1f424cf93df9e36ab539a3e97c3fdb05c87d641fd181bffd6298  Erdos506.zip
 ```
 
-The retained full clean replay ends with:
+## Pre-publication fail-closed gate
+
+Attempt 1 of [workflow run 32986694903](https://github.com/DenisUkranian/erdos-506-circles/actions/runs/32986694903), at commit `0fecffaecd3a53999aaef1b8a23a4665088af938`, passed:
+
+- deterministic preliminary, CAS-vendor, and final archive builds;
+- preservation of executable bits for all shell runners;
+- offline checks of the vendored SAT and symbolic-computation dependencies;
+- ZIP and manifest integrity checks;
+- `ERDOS506_QUICK_AUDIT=PASSED`;
+- `ERDOS506_V102_AUDIT=PASSED`;
+- `ERDOS506_FULL_REPLAY=PASSED`;
+- all 61 AA and 61 AB branches for `n=10`;
+- the complete `n=12` package;
+- active `n=13` packages for `B=80,81,82,83`;
+- the extended `n=14` replay, including all 286 labelled placements;
+- negative fail-closed tests using intentionally damaged archives;
+- preparation of the final asset set.
+
+The run's GitHub Release API step then failed with HTTP 403 because the workflow token lacked the required workflow-file permission. The overall workflow is therefore correctly marked as failed, and its public-download step was skipped. This publication-API failure occurred after, and was separate from, all proof and asset checks. Release `v1.0.2` was subsequently published manually from those exact prepared assets.
+
+## Public release verification
+
+All nine uploaded assets are present. Each public GitHub API asset digest matches the asset's frozen pre-publication expected SHA-256. The released checksum manifest itself has SHA-256:
 
 ```text
-ERDOS506_FULL_REPLAY=PASSED
+e369239642db5cafb354b9a7f95cfa7b427e1ff92526510ab8cf0873751dae20  ASSET_SHA256SUMS.txt
 ```
 
-The release finalization workflow downloaded the public release assets, checked their SHA-256 values, unpacked `Erdos506.zip`, required `ERDOS506_QUICK_AUDIT=PASSED`, and only then published `v1.0.0`.
+The manifest intentionally lists the other eight uploaded assets; it cannot include its own checksum without changing itself.
+
+The exact frozen upload bytes identified by those digests were freshly unpacked and passed the quick and v1.0.2 structural audits. A direct post-publication browser download was blocked by the execution environment, so this report does not claim an independent consumer-side byte-download replay.
+
+## Manuscript-artifact boundary
+
+The manuscript PDFs and source ZIPs in `v1.0.2` are byte-identical to their `v1.0.0` counterparts. Their embedded release text therefore still identifies the historical `v1.0.0` archive and checksum. The `v1.0.2` release notes, checksum manifest, and repository metadata identify the corrected canonical verification object. Updating the embedded manuscript text would require rebuilt manuscript assets in a future release.
 
 ## Status boundary
 
-This is a public computer-assisted preprint and reproducible exact verification package. It is not a proof-assistant formalization and has not yet undergone journal peer review. Independent mathematical review and clean-room reimplementation remain invited.
+This is a public computer-assisted preprint and reproducible exact verification package. It is not a proof-assistant formalization and has not undergone journal peer review. Independent mathematical review, literature and priority assessment, and clean-room reimplementation remain invited.
