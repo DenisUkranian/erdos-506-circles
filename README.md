@@ -32,6 +32,8 @@ The released checksum manifest is also committed as [`ASSET_SHA256SUMS.txt`](ASS
 
 The manuscript PDFs and source archives are byte-identical to those in `v1.0.0`; the corrected object in `v1.0.2` is the verification archive. Consequently, historical `v1.0.0` references inside the unchanged manuscript files refer to the first public release.
 
+The top-level README stored in the immutable `v1.0.2` tag snapshot also retains the historical `v1.0.0` release link and checksum because repository metadata were synchronized after tag creation. The published tag is intentionally not retargeted; the current `main` README and the `v1.0.2` release metadata identify the canonical object.
+
 The complete editable sources are also committed:
 
 - [LaTeX manuscript](paper/main.tex);
@@ -71,6 +73,12 @@ ERDOS506_FULL_REPLAY=PASSED
 ```
 
 Before publication, the frozen archive passed deterministic builds, the quick and v1.0.2 structural audits, a complete clean replay, all 61 AA and 61 AB `n=10` branches, the complete `n=12` package, all active `n=13` packages for `B=80,81,82,83`, all 286 labelled `n=14` placements, and fail-closed mutation tests. After publication, each of the nine public GitHub API asset digests matched its frozen expected SHA-256; the exact frozen upload bytes also passed fresh quick and structural audits. A direct post-publication browser download was unavailable in the verification environment, so no independent consumer-side byte-download replay is claimed.
+
+## Independent focused delta cross-check
+
+On 29 August 2026, Rafał Wrona completed a [narrow delta cross-check of the frozen `v1.0.2` release](https://github.com/DenisUkranian/erdos-506-circles/issues/5#issuecomment-5461694383). He matched the canonical archive SHA-256, confirmed that the three reproducibility caveats identified in his `v1.0.0` audit were addressed, replayed the corrected `n=10`, `n=13`, and `n=14` paths at the stated scope, and identified no statement-equivalence gap in the count-preservation bridge under the explicit exact-triple-partition lemma.
+
+This is an external focused replay and packaging/semantics cross-check, not a new independent audit of the entire proof.
 
 See [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [FINAL_RELEASE_AUDIT.md](FINAL_RELEASE_AUDIT.md), and [PUBLICATION_STATUS.md](PUBLICATION_STATUS.md).
 
