@@ -15,9 +15,12 @@
 - Manuscript source build: passed (8 pages).
 - Computational supplement source build: passed (5 pages).
 - Deterministic source-archive regeneration: passed.
+- External focused delta cross-check: completed by Rafał Wrona on 29 August 2026 against the exact frozen `v1.0.2` commit and canonical archive. The archive SHA-256 matched; the three `v1.0.0` reproducibility caveats were confirmed addressed; no statement-equivalence gap was identified in the count-preservation bridge under the explicit lemma. [Public report](https://github.com/DenisUkranian/erdos-506-circles/issues/5#issuecomment-5461694383).
 - arXiv identifier: pending submission.
 - Zenodo DOI: pending archival deposit.
 
 Verification boundary: the public GitHub API digests were compared with the frozen pre-publication values, and the same frozen upload bytes were replayed locally. A direct post-publication browser download was blocked by the execution environment; therefore no independent post-publication byte-download replay is claimed.
 
 Release `v1.0.2` is the canonical current proof object. Historical release `v1.0.0` remains unchanged for transparency, but should not be used as the current download or citation target. Future substantive corrections must receive a new version and checksum.
+
+Metadata boundary: the top-level README in the immutable `v1.0.2` tag snapshot still contains the historical `v1.0.0` release link and checksum. The tag and release assets remain unchanged to preserve the frozen audit trail; the current `main` README and release metadata identify `v1.0.2` as canonical.
