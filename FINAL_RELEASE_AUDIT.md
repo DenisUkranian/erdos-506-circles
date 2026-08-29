@@ -51,9 +51,24 @@ The manifest intentionally lists the other eight uploaded assets; it cannot incl
 
 The exact frozen upload bytes identified by those digests were freshly unpacked and passed the quick and v1.0.2 structural audits. A direct post-publication browser download was blocked by the execution environment, so this report does not claim an independent consumer-side byte-download replay.
 
+## External focused delta cross-check
+
+On 29 August 2026, Rafał Wrona published a [narrow delta cross-check](https://github.com/DenisUkranian/erdos-506-circles/issues/5#issuecomment-5461694383) against tag `v1.0.2`, commit `0fecffaecd3a53999aaef1b8a23a4665088af938`, and the canonical archive SHA-256 `100316dcf37b1f424cf93df9e36ab539a3e97c3fdb05c87d641fd181bffd6298`.
+
+The report confirms, at its stated scope:
+
+- the vendored `cadical-wasm@0.1.2` environment and all 61 AA plus 61 AB `n=10` branches completed offline;
+- the unmodified `v1.0.2` `n=14` runner completed the 86 sigma-one regenerations, `B=96`, and all 286 labelled placements;
+- the active `n=13` path consistently uses `B80..B83`, with the older WIP material historical and inactive;
+- no statement-equivalence gap was identified in the count-preservation bridge under the explicit exact-triple-partition lemma.
+
+The reviewer explicitly characterizes this as a replay and focused packaging/semantics cross-check, not a new independent audit of the entire proof. The full Euclidean-to-abstract encoding is not packaged as a single standalone Lean theorem.
+
 ## Manuscript-artifact boundary
 
 The manuscript PDFs and source ZIPs in `v1.0.2` are byte-identical to their `v1.0.0` counterparts. Their embedded release text therefore still identifies the historical `v1.0.0` archive and checksum. The `v1.0.2` release notes, checksum manifest, and repository metadata identify the corrected canonical verification object. Updating the embedded manuscript text would require rebuilt manuscript assets in a future release.
+
+The top-level README in the immutable `v1.0.2` tag snapshot likewise retains the historical `v1.0.0` release link and checksum because the repository metadata were synchronized after tag creation. The published tag is intentionally not retargeted. This is a tag-level metadata limitation, not a change to the verified archive or its checksum.
 
 ## Status boundary
 
