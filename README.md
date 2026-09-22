@@ -1,96 +1,41 @@
-# Erdős Problem 506 — minimum circles determined by planar points
+# Erdős #634 — exact triangle-tiling research
 
-[![status](https://img.shields.io/badge/status-public%20preprint-blue)](#status)
-[![verification](https://img.shields.io/badge/verification-replayable-brightgreen)](#verification)
-[![release](https://img.shields.io/badge/release-v1.0.2-blue)](https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2)
+Research directed by **Denis Paliy**, with substantial GPT/Codex assistance.
 
-This repository accompanies the preprint **“The Minimum Number of Circles Determined by Planar Point Sets under the Elliott–Purdy–Smith Convention”** by **Denis Paliy** (Independent researcher, Kyiv, Ukraine).
+This is a reproducible research collection, **not a solution of the full Erdős problem**. Reflections and T-junctions are allowed. The primary audited result is:
 
-## Result
+> A triangle with sides **(125,125,142)** cannot be tiled by congruent triangles with sides **(10,21,25)**. The area ratio is 71.
 
-For distinct planar points that are not all collinear and not all concyclic, counting only proper Euclidean circles containing at least three selected points, the computer-assisted verification establishes
+This does not classify all 71-piece tilings, all parameters of the rational family, or all admissible tile counts.
 
-- `f(8) = 17`;
-- for every `n >= 9`, `f(n) = 1 + C(n-1,2) - floor((n-1)/2)`.
+## Publication location
 
-In particular, `f(12) = 51` and `f(13) = 61`.
+This collection is isolated on branch `erdos-634-research` of the owner's existing public repository. The `main` branch and releases devoted to Erdős #506 are not modified. The branch name, rather than the repository's legacy name, identifies this project.
 
-## Current release
+## Start here
 
-GitHub Release [`v1.0.2`](https://github.com/DenisUkranian/erdos-506-circles/releases/tag/v1.0.2) is public, is not a pre-release, and is the current Latest release. Tag `v1.0.2` resolves to commit `0fecffaecd3a53999aaef1b8a23a4665088af938`. The release contains:
+- [Self-contained N71 proof](docs/N71_proof.md)
+- [Shifted-endpoint strip obstruction](docs/shifted_strip.md)
+- [Claim ledger and limits](STATUS.md)
+- [Literature and review questions](docs/literature.md)
+- [AI assistance](AI_DISCLOSURE.md)
 
-- [`Erdos506.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/Erdos506.zip) — canonical corrected proof and verification archive;
-- [`Erdos506.zip.sha256`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/Erdos506.zip.sha256) — canonical archive checksum sidecar;
-- [`erdos506_preprint.pdf`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/erdos506_preprint.pdf) — main preprint;
-- [`erdos506_computational_supplement.pdf`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/erdos506_computational_supplement.pdf) — computational supplement;
-- [`arxiv-source.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/arxiv-source.zip) — manuscript source prepared for arXiv;
-- [`supplement-source.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/supplement-source.zip) — supplement source;
-- [`Erdos506_AUDIT_v1.0.2.zip`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/Erdos506_AUDIT_v1.0.2.zip) and its `.sha256` sidecar — publication-gate logs;
-- [`ASSET_SHA256SUMS.txt`](https://github.com/DenisUkranian/erdos-506-circles/releases/download/v1.0.2/ASSET_SHA256SUMS.txt) — checksums for the other eight uploaded assets.
+The original N71 certificate has 7,618 states. A shifted-endpoint strip obstruction reduces it to 7,614. Both full trees were accepted by exact rational verification. The four-state reduction is modest and is not advertised as a major speedup.
 
-The released checksum manifest is also committed as [`ASSET_SHA256SUMS.txt`](ASSET_SHA256SUMS.txt). Release `v1.0.0` remains available as a historical record, but `v1.0.2` should be used for downloading, verification, and citation.
+## Reproduction
 
-The manuscript PDFs and source archives are byte-identical to those in `v1.0.0`; the corrected object in `v1.0.2` is the verification archive. Consequently, historical `v1.0.0` references inside the unchanged manuscript files refer to the first public release.
+The checkers reconstruct all 12 placements at each selected strict convex corner, check containment and intersections with rational arithmetic, and reject missing children. No edge-to-edge restriction, arbitrary interior-direction bound, floating-point tolerance or timeout is treated as a proof of impossibility.
 
-The top-level README stored in the immutable `v1.0.2` tag snapshot also retains the historical `v1.0.0` release link and checksum because repository metadata were synchronized after tag creation. The published tag is intentionally not retargeted; the current `main` README and the `v1.0.2` release metadata identify the canonical object.
+The paper argument that every possible tiling has the fixed three-apex root up to reflection is essential. Running a checker alone does not check that argument.
 
-The complete editable sources are also committed:
+## Historical collection and scope
 
-- [LaTeX manuscript](paper/main.tex);
-- [computational supplement](paper/supplement.tex);
-- [bibliography metadata](paper/references.bib).
+The publication separates current proofs from inherited notes and intermediate claims. The full manuscript of a separately reported uniform `u=2` proof was not recovered; its existence is not substituted for a proof or claimed as a fresh verification. The separate Shallit #9 work and private correspondence are excluded.
 
-## Verification
+## Novelty and external review
 
-The canonical proof object is `Erdos506.zip`, SHA-256:
+Michael Beeson already stated broader non-prime-tiling results for this angle family, including Theorem 15 of arXiv:1206.2229v3 (2019), and further prime-count results in arXiv:2607.19572 and arXiv:2607.23453 (2026). Therefore N71 must **not** be presented as the first announcement of this non-tiling conclusion. The contribution offered for review is a self-contained exact geometric certificate and strip arguments independent of the older divisibility route.
 
-```text
-100316dcf37b1f424cf93df9e36ab539a3e97c3fdb05c87d641fd181bffd6298
-```
+Two explicit issues in the older printed arithmetic argument are recorded as technical questions, not as counterexamples to the main non-tiling conclusions. Literary priority, correctness of every inherited proof, and journal acceptance have not been established by this publication.
 
-Download it to `verification/Erdos506.zip`, then run:
-
-```bash
-bash verify_repository.sh
-```
-
-For the complete computational replay:
-
-```bash
-rm -rf /tmp/erdos506-full
-mkdir -p /tmp/erdos506-full
-unzip -q verification/Erdos506.zip -d /tmp/erdos506-full
-cd /tmp/erdos506-full/Erdos506
-python3 verify.py --full
-```
-
-Expected markers include:
-
-```text
-ERDOS506_QUICK_AUDIT=PASSED
-ERDOS506_V102_AUDIT=PASSED
-ERDOS506_FULL_REPLAY=PASSED
-```
-
-Before publication, the frozen archive passed deterministic builds, the quick and v1.0.2 structural audits, a complete clean replay, all 61 AA and 61 AB `n=10` branches, the complete `n=12` package, all active `n=13` packages for `B=80,81,82,83`, all 286 labelled `n=14` placements, and fail-closed mutation tests. After publication, each of the nine public GitHub API asset digests matched its frozen expected SHA-256; the exact frozen upload bytes also passed fresh quick and structural audits. A direct post-publication browser download was unavailable in the verification environment, so no independent consumer-side byte-download replay is claimed.
-
-## Independent focused delta cross-check
-
-On 29 August 2026, Rafał Wrona completed a [narrow delta cross-check of the frozen `v1.0.2` release](https://github.com/DenisUkranian/erdos-506-circles/issues/5#issuecomment-5461694383). He matched the canonical archive SHA-256, confirmed that the three reproducibility caveats identified in his `v1.0.0` audit were addressed, replayed the corrected `n=10`, `n=13`, and `n=14` paths at the stated scope, and identified no statement-equivalence gap in the count-preservation bridge under the explicit exact-triple-partition lemma.
-
-This is an external focused replay and packaging/semantics cross-check, not a new independent audit of the entire proof.
-
-See [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [FINAL_RELEASE_AUDIT.md](FINAL_RELEASE_AUDIT.md), and [PUBLICATION_STATUS.md](PUBLICATION_STATUS.md).
-
-## Repository contents
-
-- `paper/` — complete manuscript and supplement sources;
-- `verification/` — proof-bundle checksum and verification instructions;
-- `CITATION.cff`, `codemeta.json`, `.zenodo.json` — archival metadata;
-- `AI_USAGE_DISCLOSURE.md` — disclosure and human-responsibility statement;
-- `LICENSE` — MIT license for software;
-- `LICENSE-DOCUMENTATION.md` — CC BY 4.0 for manuscript and original documentation.
-
-## Status
-
-Public preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review, formal proof-assistant verification, or adjudicated priority.
+“Independent checker” means implementation independence from the generator. It does not mean independent human peer review, human-only authorship, or Lean formalization. No prize application or full-resolution claim accompanies this collection.
