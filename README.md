@@ -8,6 +8,8 @@ This repository accompanies the preprint **“The Minimum Number of Circles Dete
 
 [Erdős Problem 506](https://www.erdosproblems.com/506) asks for the minimum number of distinct circles determined by triples of points when the points are neither all collinear nor all concyclic. A later paper by Stijn Cambie, Denis Paliy and Rafał Wrona gives short proofs for eight points and for every set size of at least fifteen. Reference [7] in that paper cites this repository’s verification archive. [Short Proofs for the Minimum Number of Determined Circles (arXiv:2610.18918)](https://arxiv.org/abs/2610.18918).
 
+[Project page with the nine-point circle construction](https://denisukranian.github.io/erdos-506-circles/).
+
 ## Result
 
 For distinct planar points that are not all collinear and not all concyclic, counting only proper Euclidean circles containing at least three selected points, the computer-assisted verification establishes
