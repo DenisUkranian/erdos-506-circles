@@ -99,6 +99,4 @@ See [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [FINAL_RELEASE_AUDIT.md](FINAL_REL
 
 Public preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review, formal proof-assistant verification, or adjudicated priority.
 
-**Задача Эрдёша №506.** Сколько различных окружностей определяют тройки из заданного числа точек плоскости, если ни одна прямая и ни одна окружность не содержат все точки? Здесь изучается наименьшее возможное число таких окружностей. В репозитории есть текст доказательства и код для проверки конечных случаев.
-
 See also Denis Paliy’s work on [Erdős Problem 634, tiling a triangle with congruent triangles](https://github.com/DenisUkranian/erdos-634-tilings).
