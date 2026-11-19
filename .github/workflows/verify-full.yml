@@ -23,8 +23,10 @@ jobs:
       - name: Extract
         run: mkdir extracted && unzip -q verification/Erdos506.zip -d extracted
       - name: Full replay
-        run: cd extracted/Erdos506 && python3 verify.py --full | tee ../../full-replay.log
+        shell: bash
+        run: cd extracted/Erdos506 && python3 verify.py --full 2>&1 | tee ../../full-replay.log
       - uses: actions/upload-artifact@v4
+        if: ${{ always() && hashFiles('full-replay.log') != '' }}
         with:
           name: full-replay-log
           path: full-replay.log
