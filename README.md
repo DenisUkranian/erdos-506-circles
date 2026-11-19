@@ -6,6 +6,8 @@
 
 This repository accompanies the preprint **“The Minimum Number of Circles Determined by Planar Point Sets under the Elliott–Purdy–Smith Convention”** by **Denis Paliy** (Independent researcher, Kyiv, Ukraine).
 
+[Erdős Problem 506](https://www.erdosproblems.com/506) asks for the minimum number of distinct circles determined by triples of points when the points are neither all collinear nor all concyclic. A later paper by Stijn Cambie, Denis Paliy and Rafał Wrona gives short proofs for eight points and for every set size of at least fifteen. Reference [7] in that paper cites this repository’s verification archive. [Short Proofs for the Minimum Number of Determined Circles (arXiv:2610.18918)](https://arxiv.org/abs/2610.18918).
+
 ## Result
 
 For distinct planar points that are not all collinear and not all concyclic, counting only proper Euclidean circles containing at least three selected points, the computer-assisted verification establishes
@@ -94,3 +96,7 @@ See [REPRODUCIBILITY.md](REPRODUCIBILITY.md), [FINAL_RELEASE_AUDIT.md](FINAL_REL
 ## Status
 
 Public preprint / computer-assisted proof. Independent verification is explicitly invited. The repository does not claim journal peer review, formal proof-assistant verification, or adjudicated priority.
+
+**Задача Эрдёша №506.** Сколько различных окружностей определяют тройки из заданного числа точек плоскости, если ни одна прямая и ни одна окружность не содержат все точки? Здесь изучается наименьшее возможное число таких окружностей. В репозитории есть текст доказательства и код для проверки конечных случаев.
+
+See also Denis Paliy’s work on [Erdős Problem 634, tiling a triangle with congruent triangles](https://github.com/DenisUkranian/erdos-634-tilings).
