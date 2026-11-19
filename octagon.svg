@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 460 250" role="img"><title>An octagon and a circle through its centre and two adjacent vertices</title>
+<circle cx="230" cy="125" r="97" fill="none" stroke="#335267" stroke-width="2"/>
+<polygon points="327.0000,125.0000 298.5894,56.4106 230.0000,28.0000 161.4106,56.4106 133.0000,125.0000 161.4106,193.5894 230.0000,222.0000 298.5894,193.5894" fill="none" stroke="#a0b3bf" stroke-width="1.5"/>
+<circle cx="278.5000" cy="104.9106" r="52.4960" fill="#da7045" fill-opacity=".10" stroke="#b34b28" stroke-width="2.5"/>
+<circle cx="327.0000" cy="125.0000" r="4" fill="#172e41"/>
+<circle cx="298.5894" cy="56.4106" r="4" fill="#172e41"/>
+<circle cx="230.0000" cy="28.0000" r="4" fill="#172e41"/>
+<circle cx="161.4106" cy="56.4106" r="4" fill="#172e41"/>
+<circle cx="133.0000" cy="125.0000" r="4" fill="#172e41"/>
+<circle cx="161.4106" cy="193.5894" r="4" fill="#172e41"/>
+<circle cx="230.0000" cy="222.0000" r="4" fill="#172e41"/>
+<circle cx="298.5894" cy="193.5894" r="4" fill="#172e41"/>
+<circle cx="230.0000" cy="125.0000" r="4" fill="#172e41"/></svg>
